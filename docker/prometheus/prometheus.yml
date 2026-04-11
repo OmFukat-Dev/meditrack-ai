@@ -1,0 +1,94 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Eureka Server
+  - job_name: 'eureka-server'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8761']
+    scrape_interval: 30s
+
+  # API Gateway
+  - job_name: 'api-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+    scrape_interval: 30s
+
+  # Patient Service
+  - job_name: 'patient-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8081']
+    scrape_interval: 30s
+
+  # Vitals Service
+  - job_name: 'vitals-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8082']
+    scrape_interval: 30s
+
+  # AI Prediction Service
+  - job_name: 'ai-prediction-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8083']
+    scrape_interval: 30s
+
+  # Alert Service
+  - job_name: 'alert-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8084']
+    scrape_interval: 30s
+
+  # Notification Service
+  - job_name: 'notification-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8085']
+    scrape_interval: 30s
+
+  # Vital Simulator Service
+  - job_name: 'vital-simulator-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8086']
+    scrape_interval: 30s
+
+  # Report Service
+  - job_name: 'report-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8087']
+    scrape_interval: 30s
+
+  # MySQL Exporter (if needed)
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['mysql:3306']
+    scrape_interval: 30s
+
+  # Redis Exporter (if needed)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+
+  # Kafka Exporter (if needed)
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka:9101']
+    scrape_interval: 30s

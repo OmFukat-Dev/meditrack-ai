@@ -1,0 +1,216 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # Patient Service Routes
+        - id: patient-service
+          uri: lb://patient-service
+          predicates:
+            - Path=/api/patients/**,/api/patient/**
+          filters:
+            - StripPrefix=1
+            - CircuitBreaker=fallbackPatientService
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+        
+        # Vitals Service Routes
+        - id: vitals-service
+          uri: lb://vitals-service
+          predicates:
+            - Path=/api/vitals/**,/api/vital/**
+          filters:
+            - StripPrefix=1
+            - CircuitBreaker=fallbackVitalsService
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
+                key-resolver: "#{@userKeyResolver}"
+        
+        # AI Prediction Service Routes
+        - id: ai-prediction-service
+          uri: lb://ai-prediction
+          predicates:
+            - Path=/api/predictions/**,/api/prediction/**
+          filters:
+            - StripPrefix=1
+            - CircuitBreaker=fallbackAIPredictionService
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+                key-resolver: "#{@userKeyResolver}"
+        
+        # Alert Service Routes
+        - id: alert-service
+          uri: lb://alert-service
+          predicates:
+            - Path=/api/alerts/**,/api/alert/**
+          filters:
+            - StripPrefix=1
+            - CircuitBreaker=fallbackAlertService
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 30
+                redis-rate-limiter.burstCapacity: 60
+                key-resolver: "#{@userKeyResolver}"
+        
+        # Notification Service Routes
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**,/api/notification/**
+          filters:
+            - StripPrefix=1
+            - CircuitBreaker=fallbackNotificationService
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 15
+                redis-rate-limiter.burstCapacity: 30
+                key-resolver: "#{@userKeyResolver}"
+        
+        # Report Service Routes
+        - id: report-service
+          uri: lb://report-service
+          predicates:
+            - Path=/api/reports/**,/api/report/**
+          filters:
+            - StripPrefix=1
+            - CircuitBreaker=fallbackReportService
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 5
+                redis-rate-limiter.burstCapacity: 10
+                key-resolver: "#{@userKeyResolver}"
+      
+      # Global CORS Configuration
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+
+  # Redis Configuration for Rate Limiting
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+# Eureka Client Configuration
+eureka:
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+  client:
+    service-url:
+      defaultZone: http://admin:admin123@localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+    registry-fetch-interval-seconds: 30
+
+# Resilience4j Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      fallbackPatientService:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 60s
+        failure-rate-threshold: 50
+      fallbackVitalsService:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 30s
+        failure-rate-threshold: 50
+      fallbackAIPredictionService:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 60s
+        failure-rate-threshold: 50
+      fallbackAlertService:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 30s
+        failure-rate-threshold: 50
+      fallbackNotificationService:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 60s
+        failure-rate-threshold: 50
+      fallbackReportService:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 60s
+        failure-rate-threshold: 50
+
+# Management and Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,gateway,circuitbreakers,ratelimiters
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+# Logging Configuration
+logging:
+  level:
+    com.meditrack: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web.reactive.function.client: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

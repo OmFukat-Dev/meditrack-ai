@@ -1,0 +1,109 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: vital-simulator
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 3
+      batch-size: 16384
+      linger-ms: 1
+      buffer-memory: 33554432
+    consumer:
+      group-id: vital-simulator
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: latest
+      enable-auto-commit: false
+  webflux:
+    base-path: /api
+  task:
+    scheduling:
+      pool:
+        size: 5
+      thread-name-prefix: simulator-scheduler-
+
+eureka:
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+    metadata-map:
+      management.context-path: /actuator
+  client:
+    service-url:
+      defaultZone: http://admin:admin123@localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+    registry-fetch-interval-seconds: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,kafka
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+# Vital Simulator Configuration
+meditrack:
+  simulator:
+    enabled: true
+    interval-seconds: 30
+    patient-count: 10
+    vital-types:
+      - HEART_RATE
+      - BLOOD_PRESSURE
+      - TEMPERATURE
+      - SPO2
+      - RESPIRATORY_RATE
+    ranges:
+      heart-rate:
+        min: 60
+        max: 100
+        unit: bpm
+      blood-pressure-systolic:
+        min: 90
+        max: 140
+        unit: mmHg
+      blood-pressure-diastolic:
+        min: 60
+        max: 90
+        unit: mmHg
+      temperature:
+        min: 36.0
+        max: 38.0
+        unit: °C
+      spo2:
+        min: 95
+        max: 100
+        unit: '%'
+      respiratory-rate:
+        min: 12
+        max: 20
+        unit: breaths/min
+    anomaly:
+      enabled: true
+      probability: 0.05 # 5% chance of anomaly
+      severity-multiplier: 1.5
+
+logging:
+  level:
+    com.meditrack: DEBUG
+    org.springframework.kafka: DEBUG
+    org.springframework.webflux: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

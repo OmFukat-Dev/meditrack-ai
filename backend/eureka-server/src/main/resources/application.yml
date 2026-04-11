@@ -1,0 +1,46 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: eureka-server
+  security:
+    user:
+      name: admin
+      password: ${EUREKA_PASSWORD:admin123}
+      roles: ADMIN
+
+eureka:
+  instance:
+    hostname: localhost
+    prefer-ip-address: true
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${spring.security.user.name}:${spring.security.user.password}@${eureka.instance.hostname}:${server.port}/eureka/
+  server:
+    enable-self-preservation: false
+    eviction-interval-timer-in-ms: 5000
+    renewal-percent-threshold: 0.85
+    response-cache-update-interval-ms: 30000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    com.meditrack: DEBUG
+    org.springframework.cloud.netflix.eureka: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

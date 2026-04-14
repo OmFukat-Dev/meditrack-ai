@@ -56,10 +56,10 @@ MediTrack AI is a healthcare monitoring system with predictive alerts using micr
 
 ### 🏥 PHASE 2: CORE MICROSERVICES (Week 3-5)
 #### Sub-phase 2.1: Patient Service
-- [ ] Patient CRUD operations
-- [ ] Medical history management
-- [ ] FHIR compliance implementation
-- [ ] Data validation and security
+- [x] Patient CRUD operations
+- [x] Medical history management
+- [x] FHIR compliance implementation
+- [x] Data validation and security
 
 #### Sub-phase 2.2: Vitals Ingestion Service
 - [ ] Kafka consumer for vital streams

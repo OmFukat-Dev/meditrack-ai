@@ -1,35 +1,26 @@
 server:
-  port: 8083
+  port: 8084
 
 spring:
   application:
     name: ai-prediction
   datasource:
-    url: jdbc:mysql://localhost:3306/meditrack_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: meditrack_user
-    password: meditrack_pass
+    url: jdbc:mysql://localhost:3306/meditrack_ai_prediction
+    username: root
+    password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
-        format_sql: true
-        use_sql_comments: true
-    open-in-view: false
+      show-sql: false
+      properties:
+        hibernate:
+          dialect: org.hibernate.dialect.MySQL8Dialect
+          format_sql: true
   flyway:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
-    validate-on-migrate: true
   kafka:
     bootstrap-servers: localhost:9092
     producer:
@@ -46,12 +37,10 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       auto-offset-reset: latest
       enable-auto-commit: false
-      properties:
-        spring.json.trusted.packages: com.meditrack.ai
   task:
     scheduling:
       pool:
-        size: 5
+        size: 10
       thread-name-prefix: ai-prediction-scheduler-
 
 eureka:
@@ -72,12 +61,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,flyway,kafka
+        include: health,info,metrics,prometheus,kafka
   endpoint:
     health:
       show-details: always
-    flyway:
-      enabled: true
   metrics:
     export:
       prometheus:
@@ -85,27 +72,136 @@ management:
     tags:
       application: ${spring.application.name}
 
-# AI/ML Configuration
+# MediTrack AI Prediction Configuration
 meditrack:
-  ai:
+  ai-prediction:
+    # Weka Configuration
     weka:
-      model-path: classpath:models/
-      model-files:
-        risk-prediction: risk_model.model
-        deterioration: deterioration_model.model
-        sepsis: sepsis_model.model
+      model-storage-path: "./models"
+      max-models-in-memory: 10
+      enable-model-persistence: true
+      enable-model-versioning: true
+      max-model-versions: 5
+      enable-auto-retraining: false
+      retraining-threshold: 1000
+      default-j48-params:
+        confidence-factor: 0.25
+        min-num-obj: 2
+        binary-splits: false
+        unpruned: false
+        reduced-error-pruning: true
+        num-folds: 3
+    
+    # NEWS Scoring Configuration
     news:
-      enabled: true
-      scoring-interval: 5 # minutes
+      enable-trend-analysis: true
+      enable-risk-level-calculation: true
+      enable-historical-comparison: true
+      historical-comparison-hours: 24
+      enable-alerts: true
+      alert-threshold: 7.0
+      custom-scoring: {}
+    
+    # Feature Engineering Configuration
     feature-engineering:
-      rate-of-change-windows: "15,30,60,240" # minutes
-      trend-threshold: 0.7
+      short-term-window: 6
+      medium-term-window: 12
+      long-term-window: 24
+      enable-cross-vital-features: true
+      enable-temporal-features: true
+      enable-statistical-features: true
+      enable-outlier-detection: true
+      outlier-threshold: 1.5
+      enable-trend-analysis: true
+      enable-volatility-calculation: true
+      max-features-per-vital: 50
+      enable-feature-selection: false
+      feature-selection-threshold: 0.05
+    
+    # Performance Tracking Configuration
+    performance-tracking:
+      enable-tracking: true
+      max-prediction-history: 10000
+      max-drift-history: 1000
+      drift-detection-threshold: 0.1
+      drift-detection-window-size: 100
+      enable-real-time-monitoring: true
+      monitoring-interval-seconds: 60
+      enable-performance-alerts: true
+      performance-alert-threshold: 0.8
+      enable-model-comparison: true
+      model-comparison-metric: accuracy
+    
+    # General AI Configuration
+    general:
+      enable-ai-services: true
+      enable-caching: true
+      cache-expiration-minutes: 30
+      enable-metrics: true
+      metrics-reporting-interval-seconds: 300
+      enable-logging: true
+      log-level: INFO
+      enable-async-processing: true
+      thread-pool-size: 10
+      queue-capacity: 1000
+      enable-rate-limiting: true
+      max-requests-per-minute: 100
+      enable-circuit-breaker: true
+      circuit-breaker-failure-threshold: 0.5
+      circuit-breaker-timeout-seconds: 30
 
+# AI/ML Specific Settings
+ai:
+  ml:
+    # Weka Settings
+    weka:
+      memory: 1024m
+      classpath: "weka-stable-3.8.0.jar"
+      enable-debug: false
+    
+    # Model Training Settings
+    training:
+      max-instances: 100000
+      cross-validation-folds: 10
+      seed: 42
+      enable-parallel-processing: true
+      parallel-processing-threads: 4
+    
+    # Prediction Settings
+    prediction:
+      batch-size: 100
+      timeout-seconds: 30
+      enable-confidence-threshold: false
+      confidence-threshold: 0.7
+    
+    # Feature Engineering Settings
+    features:
+      enable-scaling: true
+      enable-normalization: true
+      enable-dimensionality-reduction: false
+      dimensionality-reduction-technique: PCA
+      max-features: 100
+    
+    # Model Evaluation Settings
+    evaluation:
+      metrics: [accuracy, precision, recall, f1, roc_auc]
+      enable-cross-validation: true
+      enable-holdout-validation: true
+      holdout-ratio: 0.2
+      enable-bootstrap-sampling: false
+      bootstrap-samples: 100
+
+# Logging Configuration
 logging:
   level:
-    com.meditrack: DEBUG
-    org.springframework.kafka: DEBUG
-    weka: INFO
+    com.meditrack.ai: DEBUG
+    weka: WARN
+    org.springframework.kafka: INFO
+    org.springframework.web: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/ai-prediction.log
+    max-size: 100MB
+    max-history: 30

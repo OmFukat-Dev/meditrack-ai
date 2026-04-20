@@ -1,20 +1,14 @@
 server:
-  port: 8084
+  port: 8085
 
 spring:
   application:
     name: alert-service
   datasource:
-    url: jdbc:mysql://localhost:3306/meditrack_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: meditrack_user
-    password: meditrack_pass
+    url: jdbc:mysql://localhost:3306/meditrack_alert_service
+    username: root
+    password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
   jpa:
     hibernate:
       ddl-auto: validate
@@ -23,13 +17,10 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
-        use_sql-comments: true
-    open-in-view: false
   flyway:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
-    validate-on-migrate: true
   kafka:
     bootstrap-servers: localhost:9092
     producer:
@@ -37,27 +28,12 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       acks: all
       retries: 3
-      batch-size: 16384
-      linger-ms: 1
-      buffer-memory: 33554432
     consumer:
       group-id: alert-service
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       auto-offset-reset: latest
       enable-auto-commit: false
-      properties:
-        spring.json.trusted.packages: com.meditrack.alert
-  redis:
-    host: localhost
-    port: 6379
-    password: redis123
-    timeout: 2000ms
-    lettuce:
-      pool:
-        max-active: 8
-        max-idle: 8
-        min-idle: 0
   task:
     scheduling:
       pool:
@@ -82,12 +58,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,flyway,kafka
+        include: health,info,metrics,prometheus,kafka
   endpoint:
     health:
       show-details: always
-    flyway:
-      enabled: true
   metrics:
     export:
       prometheus:
@@ -95,25 +69,116 @@ management:
     tags:
       application: ${spring.application.name}
 
-# Alert Configuration
+# MediTrack Alert Service Configuration
 meditrack:
   alert:
+    # Alert Processing Configuration
+    processing:
+      max-concurrent-alerts: 100
+      alert-timeout-minutes: 30
+      auto-escalation-enabled: true
+      batch-processing-size: 50
+    
+    # Escalation Configuration
     escalation:
       default-timeout-minutes: 5
       max-escalation-levels: 3
+      escalation-check-interval-seconds: 60
+      auto-escalation-enabled: true
+      escalation-retry-attempts: 3
+    
+    # Notification Configuration
+    notification:
+      max-retry-attempts: 3
+      retry-delay-seconds: 30
+      batch-notification-size: 100
+      notification-timeout-seconds: 120
+      multi-channel-enabled: true
+    
+    # Email Notification Configuration
+    email:
+      enabled: true
+      smtp-host: smtp.gmail.com
+      smtp-port: 587
+      username: meditrack-alerts@gmail.com
+      password: ${EMAIL_PASSWORD}
+      from-email: meditrack-alerts@gmail.com
+      from-name: "MediTrack Alerts"
+      ssl-enabled: true
+      tls-enabled: true
+    
+    # SMS Notification Configuration
+    sms:
+      enabled: true
+      provider: twilio
+      account-sid: ${TWILIO_ACCOUNT_SID}
+      auth-token: ${TWILIO_AUTH_TOKEN}
+      from-number: ${TWILIO_FROM_NUMBER}
+      max-length: 160
+    
+    # Push Notification Configuration
+    push:
+      enabled: true
+      firebase-server-key: ${FIREBASE_SERVER_KEY}
+      max-badge-count: 99
+      notification-ttl-seconds: 3600
+    
+    # Webhook Notification Configuration
+    webhook:
+      enabled: true
+      timeout-seconds: 30
+      retry-attempts: 3
+      signature-header: X-Meditrack-Signature
+      secret-key: ${WEBHOOK_SECRET_KEY}
+    
+    # Saga Configuration
+    saga:
+      timeout-minutes: 30
+      retry-attempts: 3
+      compensation-enabled: true
+      saga-execution-pool-size: 20
+    
+    # Suppression Configuration
     suppression:
       quiet-hours-enabled: true
       quiet-hours-start: "22:00"
       quiet-hours-end: "06:00"
-    saga:
-      timeout-minutes: 30
-      retry-attempts: 3
+      suppression-window-minutes: 60
+      max-suppressed-alerts: 1000
+    
+    # Audit Configuration
+    audit:
+      enabled: true
+      retention-days: 365
+      batch-size: 1000
+      audit-level: INFO
+      include-sensitive-data: false
+    
+    # Rate Limiting Configuration
+    rate-limiting:
+      enabled: true
+      requests-per-minute: 1000
+      burst-size: 100
+      cleanup-interval-minutes: 15
+    
+    # Circuit Breaker Configuration
+    circuit-breaker:
+      enabled: true
+      failure-threshold: 5
+      timeout-seconds: 30
+      recovery-timeout-seconds: 60
 
+# Logging Configuration
 logging:
   level:
-    com.meditrack: DEBUG
-    org.springframework.kafka: DEBUG
-    org.springframework.scheduling: DEBUG
+    com.meditrack.alert: DEBUG
+    org.springframework.kafka: INFO
+    org.springframework.scheduling: INFO
+    org.springframework.web: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/alert-service.log
+    max-size: 100MB
+    max-history: 30

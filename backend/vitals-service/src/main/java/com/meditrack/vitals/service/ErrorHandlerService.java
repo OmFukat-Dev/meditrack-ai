@@ -357,7 +357,9 @@ public class ErrorHandlerService {
                 additionalData
             );
             
-            String eventJson = objectMapper.writeValueAsString(event);
+            String eventJson = objectMapper.copy()
+                .findAndRegisterModules()
+                .writeValueAsString(event);
             kafkaTemplate.send("error-events", eventJson);
             
             logger.debug("Published error event: {}", eventJson);
@@ -402,7 +404,9 @@ public class ErrorHandlerService {
                 LocalDateTime.now()
             );
             
-            String escalationJson = objectMapper.writeValueAsString(escalation);
+            String escalationJson = objectMapper.copy()
+                .findAndRegisterModules()
+                .writeValueAsString(escalation);
             kafkaTemplate.send("escalation-events", escalationJson);
             
             logger.warn("Triggered escalation: {} - {}", escalationType, message);

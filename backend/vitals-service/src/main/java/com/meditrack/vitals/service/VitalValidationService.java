@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -36,7 +37,7 @@ public class VitalValidationService {
     
     // Main validation method
     public ValidationResult validateAndNormalize(VitalReadingMessage message) {
-        List<String> errors = List.of();
+        List<String> errors = new ArrayList<>();
         VitalReadingMessage normalized = new VitalReadingMessage();
         
         // Copy original message
@@ -107,6 +108,25 @@ public class VitalValidationService {
             }
         }
         
+        // Validate and normalize nurse metadata
+        if (message.getNurseId() == null || message.getNurseId().trim().isEmpty()) {
+            errors.add("Nurse identifier is required");
+        } else {
+            normalized.setNurseId(message.getNurseId().trim());
+        }
+        
+        if (message.getDepartment() == null || message.getDepartment().trim().isEmpty()) {
+            errors.add("Department is required");
+        } else {
+            normalized.setDepartment(message.getDepartment().trim());
+        }
+        
+        if (message.getNotes() == null || message.getNotes().trim().isEmpty()) {
+            errors.add("Notes are required");
+        } else {
+            normalized.setNotes(message.getNotes().trim());
+        }
+        
         // Normalize blood pressure specific fields
         if ("BLOOD_PRESSURE".equals(normalized.getVitalType())) {
             ValidationResult bpValidation = validateBloodPressure(normalized);
@@ -142,10 +162,7 @@ public class VitalValidationService {
         if (message.getLocation() != null) {
             normalized.setLocation(message.getLocation().trim());
         }
-        if (message.getNotes() != null) {
-            normalized.setNotes(message.getNotes().trim());
-        }
-        
+
         boolean isValid = errors.isEmpty();
         logger.debug("Validation result: valid={}, errors={}", isValid, errors);
         
@@ -248,10 +265,10 @@ public class VitalValidationService {
                 break;
             case "TEMPERATURE":
                 if (normalized.equals("C") || normalized.equals("CELSIUS")) {
-                    return "°C";
+                    return "C";
                 }
                 if (normalized.equals("F") || normalized.equals("FAHRENHEIT")) {
-                    return "°F";
+                    return "F";
                 }
                 break;
             case "SPO2":
@@ -328,7 +345,7 @@ public class VitalValidationService {
     
     // Blood pressure specific validation
     private ValidationResult validateBloodPressure(VitalReadingMessage message) {
-        List<String> errors = List.of();
+        List<String> errors = new ArrayList<>();
         VitalReadingMessage normalized = message;
         
         if (message.getSystolic() == null && message.getDiastolic() == null) {
@@ -385,7 +402,7 @@ public class VitalValidationService {
     
     // Value range validation
     private ValidationResult validateValueRanges(VitalReadingMessage message) {
-        List<String> errors = List.of();
+        List<String> errors = new ArrayList<>();
         VitalReadingMessage normalized = message;
         
         String vitalType = message.getVitalType();
@@ -403,7 +420,7 @@ public class VitalValidationService {
                 break;
             case "TEMPERATURE":
                 if (value.compareTo(new BigDecimal("25.0")) < 0 || value.compareTo(new BigDecimal("45.0")) > 0) {
-                    errors.add("Temperature out of range (25.0-45.0 °C): " + value);
+                    errors.add("Temperature out of range (25.0-45.0 C): " + value);
                 }
                 break;
             case "SPO2":
@@ -438,6 +455,8 @@ public class VitalValidationService {
         target.setLocation(source.getLocation());
         target.setQualityScore(source.getQualityScore());
         target.setNotes(source.getNotes());
+        target.setNurseId(source.getNurseId());
+        target.setDepartment(source.getDepartment());
         target.setMessageId(source.getMessageId());
         target.setCorrelationId(source.getCorrelationId());
         target.setProcessingSource(source.getProcessingSource());

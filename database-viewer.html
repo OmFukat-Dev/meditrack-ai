@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediTrack AI - Database Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            color: #333;
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .header p {
+            color: #666;
+            margin: 5px 0 0 0;
+        }
+        
+        .database-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .user-active {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .user-inactive {
+            color: #dc3545;
+        }
+        
+        .patient-critical {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .patient-stable {
+            color: #28a745;
+        }
+        
+        .patient-emergency {
+            color: #fd7e14;
+            font-weight: bold;
+        }
+        
+        .alert-critical {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .alert-high {
+            color: #fd7e14;
+            font-weight: bold;
+        }
+        
+        .alert-medium {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        
+        .vital-sign {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .timestamp {
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .refresh-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        .refresh-btn:hover {
+            background: #0056b3;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 MediTrack AI Database Viewer</h1>
+            <p>Real-time view of all database entities and relationships</p>
+            <button class="refresh-btn" onclick="location.reload()">🔄 Refresh Data</button>
+        </div>
+
+        <!-- Users Section -->
+        <div class="database-section">
+            <div class="section-title">👥 Users ({mockUsers.length})</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Department</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody id="users-tbody">
+                    <!-- Users will be populated here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Patients Section -->
+        <div class="database-section">
+            <div class="section-title">🏥 Patients ({mockPatients.length})</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Patient ID</th>
+                        <th>Name</th>
+                        <th>Age</th>
+                        <th>Gender</th>
+                        <th>Room</th>
+                        <th>Condition</th>
+                        <th>Doctor ID</th>
+                        <th>Nurse ID</th>
+                        <th>Mobile</th>
+                        <th>Guardian</th>
+                        <th>Admitted</th>
+                        <th>Vitals</th>
+                        <th>Reports</th>
+                    </tr>
+                </thead>
+                <tbody id="patients-tbody">
+                    <!-- Patients will be populated here -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Vital Signs Section -->
+        <div class="database-section">
+            <div class="section-title">📊 Vital Signs</div>
+            <div id="vital-signs-container">
+                <!-- Vital signs will be populated here -->
+            </div>
+        </div>
+
+        <!-- Alerts Section -->
+        <div class="database-section">
+            <div class="section-title">🚨 Alerts</div>
+            <div id="alerts-container">
+                <!-- Alerts will be populated here -->
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="total-users">0</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-patients">0</div>
+                <div class="stat-label">Total Patients</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="active-cases">0</div>
+                <div class="stat-label">Active Cases</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="total-vitals">0</div>
+                <div class="stat-label">Total Vitals</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mock database data (in real app, this would come from API)
+        const mockUsers = [
+            { id: 'admin-1', name: 'Admin User', email: 'om@meditrackadmin.ai', role: 'admin', department: 'Administration', isActive: true, createdAt: '2024-01-01' },
+            { id: 'doc-1', name: 'Dr. Sarah Johnson', email: 'sarah@meditrack.ai', role: 'doctor', department: 'Cardiology', isActive: true, createdAt: '2024-01-15' },
+            { id: 'doc-2', name: 'Dr. Michael Chen', email: 'michael@meditrack.ai', role: 'doctor', department: 'Neurology', isActive: true, createdAt: '2024-01-20' },
+            { id: 'nurse-1', name: 'Nurse Sarah Johnson', email: 'sarah.nurse@meditrack.ai', role: 'nurse', department: 'Cardiology', isActive: true, createdAt: '2024-01-10' },
+            { id: 'viewer-1', name: 'Viewer User', email: 'viewer@meditrack.ai', role: 'viewer', department: 'Administration', isActive: true, createdAt: '2024-02-01' }
+        ];
+
+        const mockPatients = [
+            { id: 'patient-1', patientIdentifier: 'PT-001', name: 'John Doe', email: 'john.doe@email.com', password: 'password123', age: 45, gender: 'Male', roomNumber: 'A-101', condition: 'STABLE', admittedDate: '2024-04-15', doctorId: 'doc-dipanshu', nurseId: 'nurse-sarah', mobileNumber: '+1-555-0123-4567', guardianName: 'Jane Doe', guardianMobile: '+1-555-0123-4568', vitals: [], reports: [] },
+            { id: 'patient-2', patientIdentifier: 'PT-002', name: 'Jane Smith', email: 'jane.smith@email.com', password: 'password123', age: 32, gender: 'Female', roomNumber: 'B-205', condition: 'CRITICAL', admittedDate: '2024-04-18', doctorId: 'doc-dipanshu', nurseId: 'nurse-sarah', mobileNumber: '+1-555-0124-4569', guardianName: 'Robert Smith', guardianMobile: '+1-555-0124-4570', vitals: [], reports: [] },
+            { id: 'patient-3', patientIdentifier: 'PT-003', name: 'Robert Johnson', email: 'robert.johnson@email.com', password: 'password123', age: 34, gender: 'Male', roomNumber: 'C-301', condition: 'EMERGENCY', admittedDate: '2024-04-20', doctorId: 'doc-ayush', nurseId: 'nurse-emily', mobileNumber: '+1-555-0125-4571', guardianName: 'Mary Johnson', guardianMobile: '+1-555-0125-4572', vitals: [], reports: [] },
+            { id: 'patient-4', patientIdentifier: 'PT-004', name: 'Emily Brown', email: 'emily.brown@email.com', password: 'password123', age: 39, gender: 'Female', roomNumber: 'D-102', condition: 'STABLE', admittedDate: '2024-04-22', doctorId: 'doc-tanmay', nurseId: 'nurse-jessica', mobileNumber: '+1-555-0126-4573', guardianName: 'David Brown', guardianMobile: '+1-555-0126-4574', vitals: [], reports: [] },
+            { id: 'patient-5', patientIdentifier: 'PT-005', name: 'Michael Wilson', email: 'michael.wilson@email.com', password: 'password123', age: 52, gender: 'Male', roomNumber: 'A-203', condition: 'CRITICAL', admittedDate: '2024-04-25', doctorId: 'doc-dipanshu', nurseId: 'nurse-monalisa', mobileNumber: '+1-555-0127-4575', guardianName: 'Linda Wilson', guardianMobile: '+1-555-0127-4576', vitals: [], reports: [] },
+            { id: 'patient-6', patientIdentifier: 'PT-006', name: 'Sarah Davis', email: 'sarah.davis@email.com', password: 'password123', age: 36, gender: 'Female', roomNumber: 'E-105', condition: 'STABLE', admittedDate: '2024-04-27', doctorId: 'doc-chetan', nurseId: 'nurse-lana', mobileNumber: '+1-555-0128-4577', guardianName: 'James Davis', guardianMobile: '+1-555-0128-4578', vitals: [], reports: [] },
+            { id: 'patient-7', patientIdentifier: 'PT-007', name: 'David Miller', email: 'david.miller@email.com', password: 'password123', age: 59, gender: 'Male', roomNumber: 'F-201', condition: 'EMERGENCY', admittedDate: '2024-04-29', doctorId: 'doc-monir', nurseId: 'nurse-emily', mobileNumber: '+1-555-0129-4579', guardianName: 'Susan Miller', guardianMobile: '+1-555-0129-4580', vitals: [], reports: [] },
+            { id: 'patient-8', patientIdentifier: 'PT-008', name: 'Lisa Anderson', email: 'lisa.anderson@email.com', password: 'password123', age: 32, gender: 'Female', roomNumber: 'G-104', condition: 'STABLE', admittedDate: '2024-05-01', doctorId: 'doc-tanmay', nurseId: 'nurse-jessica', mobileNumber: '+1-555-0130-4581', guardianName: 'Thomas Anderson', guardianMobile: '+1-555-0130-4582', vitals: [], reports: [] },
+            { id: 'patient-9', patientIdentifier: 'PT-009', name: 'James Taylor', email: 'james.taylor@email.com', password: 'password123', age: 46, gender: 'Male', roomNumber: 'H-102', condition: 'CRITICAL', admittedDate: '2024-05-03', doctorId: 'doc-dipanshu', nurseId: 'nurse-sarah', mobileNumber: '+1-555-0131-4583', guardianName: 'Patricia Taylor', guardianMobile: '+1-555-0131-4584', vitals: [], reports: [] },
+            { id: 'patient-10', patientIdentifier: 'PT-010', name: 'Patricia Thomas', email: 'patricia.thomas@email.com', password: 'password123', age: 41, gender: 'Female', roomNumber: 'I-203', condition: 'STABLE', admittedDate: '2024-05-05', doctorId: 'doc-ayush', nurseId: 'nurse-monalisa', mobileNumber: '+1-555-0132-4585', guardianName: 'Robert Thomas', guardianMobile: '+1-555-0132-4586', vitals: [], reports: [] },
+            { id: 'patient-11', patientIdentifier: 'PT-011', name: 'Christopher Martinez', email: 'christopher.martinez@email.com', password: 'password123', age: 54, gender: 'Male', roomNumber: 'J-105', condition: 'EMERGENCY', admittedDate: '2024-05-07', doctorId: 'doc-monir', nurseId: 'nurse-lana', mobileNumber: '+1-555-0133-4587', guardianName: 'Maria Martinez', guardianMobile: '+1-555-0133-4588', vitals: [], reports: [] },
+            { id: 'patient-12', patientIdentifier: 'PT-012', name: 'Jennifer Robinson', email: 'jennifer.robinson@email.com', password: 'password123', age: 37, gender: 'Female', roomNumber: 'K-201', condition: 'STABLE', admittedDate: '2024-05-09', doctorId: 'doc-chetan', nurseId: 'nurse-emily', mobileNumber: '+1-555-0134-4589', guardianName: 'William Robinson', guardianMobile: '+1-555-0134-4590', vitals: [], reports: [] },
+            { id: 'patient-13', patientIdentifier: 'PT-013', name: 'Daniel Clark', email: 'daniel.clark@email.com', password: 'password123', age: 29, gender: 'Male', roomNumber: 'L-104', condition: 'STABLE', admittedDate: '2024-05-11', doctorId: 'doc-tanmay', nurseId: 'nurse-jessica', mobileNumber: '+1-555-0135-4591', guardianName: 'Barbara Clark', guardianMobile: '+1-555-0135-4592', vitals: [], reports: [] },
+            { id: 'patient-14', patientIdentifier: 'PT-014', name: 'Nancy Lewis', email: 'nancy.lewis@email.com', password: 'password123', age: 48, gender: 'Female', roomNumber: 'M-203', condition: 'CRITICAL', admittedDate: '2024-05-13', doctorId: 'doc-dipanshu', nurseId: 'nurse-monalisa', mobileNumber: '+1-555-0136-4593', guardianName: 'George Lewis', guardianMobile: '+1-555-0136-4594', vitals: [], reports: [] },
+            { id: 'patient-15', patientIdentifier: 'PT-015', name: 'Paul Walker', email: 'paul.walker@email.com', password: 'password123', age: 35, gender: 'Male', roomNumber: 'N-105', condition: 'EMERGENCY', admittedDate: '2024-05-15', doctorId: 'doc-ayush', nurseId: 'nurse-lana', mobileNumber: '+1-555-0137-4595', guardianName: 'Linda Walker', guardianMobile: '+1-555-0137-4596', vitals: [], reports: [] },
+            { id: 'patient-16', patientIdentifier: 'PT-016', name: 'Karen Hall', email: 'karen.hall@email.com', password: 'password123', age: 40, gender: 'Female', roomNumber: 'O-102', condition: 'STABLE', admittedDate: '2024-05-17', doctorId: 'doc-monir', nurseId: 'nurse-emily', mobileNumber: '+1-555-0138-4597', guardianName: 'Steven Hall', guardianMobile: '+1-555-0138-4598', vitals: [], reports: [] },
+            { id: 'patient-17', patientIdentifier: 'PT-017', name: 'Mark Allen', email: 'mark.allen@email.com', password: 'password123', age: 51, gender: 'Male', roomNumber: 'P-201', condition: 'CRITICAL', admittedDate: '2024-05-19', doctorId: 'doc-chetan', nurseId: 'nurse-jessica', mobileNumber: '+1-555-0139-4599', guardianName: 'Diane Allen', guardianMobile: '+1-555-0139-4600', vitals: [], reports: [] },
+            { id: 'patient-18', patientIdentifier: 'PT-018', name: 'Sandra Young', email: 'sandra.young@email.com', password: 'password123', age: 33, gender: 'Female', roomNumber: 'Q-104', condition: 'STABLE', admittedDate: '2024-05-21', doctorId: 'doc-tanmay', nurseId: 'nurse-monalisa', mobileNumber: '+1-555-0140-4601', guardianName: 'Robert Young', guardianMobile: '+1-555-0140-4602', vitals: [], reports: [] },
+            { id: 'patient-19', patientIdentifier: 'PT-019', name: 'Kevin Hernandez', email: 'kevin.hernandez@email.com', password: 'password123', age: 47, gender: 'Male', roomNumber: 'R-203', condition: 'EMERGENCY', admittedDate: '2024-05-23', doctorId: 'doc-dipanshu', nurseId: 'nurse-lana', mobileNumber: '+1-555-0141-4603', guardianName: 'Maria Hernandez', guardianMobile: '+1-555-0141-4604', vitals: [], reports: [] },
+            { id: 'patient-20', patientIdentifier: 'PT-020', name: 'Donna King', email: 'donna.king@email.com', password: 'password123', age: 38, gender: 'Female', roomNumber: 'S-105', condition: 'STABLE', admittedDate: '2024-05-25', doctorId: 'doc-ayush', nurseId: 'nurse-emily', mobileNumber: '+1-555-0142-4605', guardianName: 'Richard King', guardianMobile: '+1-555-0142-4606', vitals: [], reports: [] }
+        ];
+
+        const mockVitalSigns = [
+            { id: 'vital-1', patientId: 'patient-1', timestamp: '2024-05-20T08:00:00Z', heartRate: 72, bloodPressure: { systolic: 120, diastolic: 80 }, temperature: 98.6, oxygenSaturation: 98, recordedBy: 'nurse-1' },
+            { id: 'vital-2', patientId: 'patient-1', timestamp: '2024-05-20T12:00:00Z', heartRate: 75, bloodPressure: { systolic: 118, diastolic: 78 }, temperature: 98.4, oxygenSaturation: 97, recordedBy: 'nurse-1' },
+            { id: 'vital-3', patientId: 'patient-2', timestamp: '2024-05-20T09:00:00Z', heartRate: 85, bloodPressure: { systolic: 130, diastolic: 85 }, temperature: 99.2, oxygenSaturation: 96, recordedBy: 'nurse-1' }
+        ];
+
+        const mockAlerts = [
+            { id: 'alert-1', patientId: 'patient-1', type: 'CRITICAL', message: 'Heart rate dangerously high - 145 BPM', timestamp: '2024-05-20T10:30:00Z', status: 'ACTIVE', assignedTo: 'doc-1' },
+            { id: 'alert-2', patientId: 'patient-2', type: 'HIGH', message: 'Blood pressure elevated - 140/95', timestamp: '2024-05-20T09:45:00Z', status: 'ACTIVE', assignedTo: 'doc-1' }
+        ];
+
+        function populateUsers() {
+            const tbody = document.getElementById('users-tbody');
+            tbody.innerHTML = mockUsers.map(user => `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.name}</td>
+                    <td>${user.email}</td>
+                    <td><span class="${user.role === 'admin' ? 'user-active' : user.isActive ? 'user-active' : 'user-inactive'}">${user.role}</span></td>
+                    <td>${user.department || '-'}</td>
+                    <td><span class="${user.isActive ? 'user-active' : 'user-inactive'}">${user.isActive ? 'Active' : 'Inactive'}</span></td>
+                    <td>${user.createdAt}</td>
+                </tr>
+            `).join('');
+        }
+
+        function populatePatients() {
+            const tbody = document.getElementById('patients-tbody');
+            tbody.innerHTML = mockPatients.map(patient => `
+                <tr>
+                    <td>${patient.id}</td>
+                    <td>${patient.patientIdentifier}</td>
+                    <td>${patient.name}</td>
+                    <td>${patient.age}</td>
+                    <td>${patient.gender}</td>
+                    <td>${patient.roomNumber}</td>
+                    <td><span class="patient-${patient.condition.toLowerCase().replace(' ', '-')}">${patient.condition}</span></td>
+                    <td>${patient.doctorId}</td>
+                    <td>${patient.nurseId}</td>
+                    <td>${patient.mobileNumber || '-'}</td>
+                    <td>${patient.guardianName || '-'}</td>
+                    <td>${patient.admittedDate}</td>
+                    <td>${patient.vitals.length} vitals</td>
+                    <td>${patient.reports.length} reports</td>
+                </tr>
+            `).join('');
+        }
+
+        function populateVitalSigns() {
+            const container = document.getElementById('vital-signs-container');
+            const vitalSignsByPatient = {};
+            
+            mockVitalSigns.forEach(vital => {
+                if (!vitalSignsByPatient[vital.patientId]) {
+                    vitalSignsByPatient[vital.patientId] = [];
+                }
+                vitalSignsByPatient[vital.patientId].push(vital);
+            });
+
+            container.innerHTML = Object.entries(vitalSignsByPatient).map(([patientId, vitals]) => {
+                const patient = mockPatients.find(p => p.id === patientId);
+                return `
+                    <div style="margin-bottom: 20px; border: 1px solid #ddd; padding: 15px; border-radius: 8px;">
+                        <h4 style="margin-bottom: 10px; color: #333;">${patient.name} (ID: ${patientId})</h4>
+                        ${vitals.map(vital => `
+                            <div class="vital-sign">
+                                <strong>${new Date(vital.timestamp).toLocaleString()}:</strong><br>
+                                HR: ${vital.heartRate} bpm<br>
+                                BP: ${vital.bloodPressure.systolic}/${vital.bloodPressure.diastolic} mmHg<br>
+                                Temp: ${vital.temperature}°F<br>
+                                O2: ${vital.oxygenSaturation}%<br>
+                                <small style="color: #666;">Recorded by: ${vital.recordedBy}</small>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function populateAlerts() {
+            const container = document.getElementById('alerts-container');
+            container.innerHTML = mockAlerts.map(alert => `
+                <div style="margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 8px;">
+                    <h4 style="margin-bottom: 10px;">Alert for Patient: ${alert.patientId}</h4>
+                    <p><strong>Type:</strong> <span class="alert-${alert.type.toLowerCase()}">${alert.type}</span></p>
+                    <p><strong>Message:</strong> ${alert.message}</p>
+                    <p><strong>Time:</strong> <span class="timestamp">${new Date(alert.timestamp).toLocaleString()}</span></p>
+                    <p><strong>Status:</strong> ${alert.status}</p>
+                    <p><strong>Assigned to:</strong> ${alert.assignedTo}</p>
+                </div>
+            `).join('');
+        }
+
+        function updateStats() {
+            document.getElementById('total-users').textContent = mockUsers.length;
+            document.getElementById('total-patients').textContent = mockPatients.length;
+            document.getElementById('active-cases').textContent = mockPatients.filter(p => p.condition.includes('Critical') || p.condition.includes('Emergency')).length;
+            
+            const totalVitals = mockVitalSigns.length;
+            document.getElementById('total-vitals').textContent = totalVitals;
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            populateUsers();
+            populatePatients();
+            populateVitalSigns();
+            populateAlerts();
+            updateStats();
+        });
+
+        // Auto-refresh every 30 seconds
+        setInterval(updateStats, 30000);
+    </script>
+</body>
+</html>

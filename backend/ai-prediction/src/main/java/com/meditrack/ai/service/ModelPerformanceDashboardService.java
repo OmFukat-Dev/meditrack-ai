@@ -239,9 +239,9 @@ public class ModelPerformanceDashboardService {
         
         if (featureImportance != null && featureImportance.getCombinedImportance() != null) {
             // Top features
-            List<TopFeature> topFeatures = featureImportance.getCombinedImportance().stream()
+            List<FeatureImportanceSummary.TopFeature> topFeatures = featureImportance.getCombinedImportance().stream()
                 .limit(10)
-                .map(fi -> new TopFeature(fi.getFeatureName(), fi.getImportanceScore(), fi.getMethod()))
+                .map(fi -> new FeatureImportanceSummary.TopFeature(fi.getFeatureName(), fi.getImportanceScore(), fi.getMethod()))
                 .collect(Collectors.toList());
             summary.setTopFeatures(topFeatures);
             

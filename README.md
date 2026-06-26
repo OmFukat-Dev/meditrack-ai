@@ -20,7 +20,7 @@ MediTrack AI is a comprehensive healthcare monitoring system that provides real-
 - **Databases** - MySQL (primary) + Redis (caching)
 - **AI/ML** - Weka 3.8 with J48 Decision Trees
 - **Frontend** - React 18 with Material-UI
-- **Monitoring** - Prometheus + Grafana + Zipkin
+- **Monitoring** - Prometheus + Grafana + Loki + Zipkin
 
 ## 📁 Project Structure
 ```
@@ -58,12 +58,14 @@ meditrack-ai/
 - **Redux Toolkit** - State management
 - **Material-UI** - Component library
 - **Recharts** - Data visualization
-- **SockJS + STOMP** - Real-time communication
+- **Native WebSocket** - Real-time communication
 
 ### DevOps & Monitoring
 - **Docker** - Containerization
 - **Prometheus** - Metrics collection
 - **Grafana** - Visualization
+- **Loki** - Log aggregation
+- **Promtail** - Log shipping
 - **Zipkin** - Distributed tracing
 - **Maven** - Build tool
 - **JUnit 5** - Testing framework
@@ -86,8 +88,10 @@ cd meditrack-ai
 # Start infrastructure services
 docker-compose up -d
 
+# This boots MySQL, Redis, Kafka, Prometheus, Grafana, Loki, Promtail, and Zipkin.
+# The MySQL init script creates the service databases, and Kafka topics are bootstrapped automatically.
+
 # Build all microservices
-cd backend
 mvn clean install
 
 # Start services (order matters)
@@ -96,10 +100,32 @@ mvn clean install
 # 3. Other microservices
 
 # Start frontend
-cd ../frontend
+cd frontend
 npm install
-npm start
+npm run dev
 ```
+
+Windows launchers:
+- `run-project.bat` opens Docker, backend, and frontend in separate windows.
+- `run-docker.bat` opens only the Docker infrastructure stack.
+- `run-backend.bat` starts the backend services; add `--skip-docker` when Docker is already being launched separately.
+
+Optional production build:
+```bash
+npm run build
+```
+
+### Frontend Access
+- The dashboard opens to a role-aware sign-in screen.
+- Demo access:
+  - `alex@admin.meditrack.ai` / `Admin@123`
+  - `dr.isha@clinician.meditrack.ai` / `Clinician@123`
+  - `family.member@viewer.meditrack.ai` / `Viewer@123`
+- The supported email pattern is `name@admin.meditrack.ai`, `name@clinician.meditrack.ai`, or `name@viewer.meditrack.ai`.
+- The sign-in card also includes a create-account tab for local clinician and viewer accounts.
+- Optional frontend env vars:
+  - `VITE_AUTH_API_URL` for a backend login service
+  - `VITE_DASHBOARD_WS_URL` for a websocket endpoint
 
 ## 📊 Implementation Phases
 
@@ -117,11 +143,29 @@ npm start
 - **API Tests** - REST Assured
 - **Coverage Target** - 80%+ (JaCoCo)
 
+## Performance Profiling
+Use the Phase 6.2 profiling script after the backend services are running:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\profile-phase6-2.ps1
+```
+
+The script captures:
+- JFR CPU profiles
+- Heap snapshots and class histograms
+- Native memory snapshots when available
+- A latency summary for the patient and vitals read paths
+
+Outputs are written to `profiling/phase-6-2/<timestamp>/`.
+
 ## 📈 Monitoring
-- **Health Checks** - Spring Boot Actuator
-- **Metrics** - Prometheus + Grafana
-- **Tracing** - Zipkin
-- **Logging** - Structured logging with correlation IDs
+- **Health Checks** - Spring Boot Actuator with custom service-specific readiness checks
+- **Metrics** - Prometheus scrapes the backend `/actuator/prometheus` endpoints and Grafana reads the same datasource
+- **Dashboards** - `docker/grafana/dashboards/meditrack-overview.json`
+- **Alerts** - Prometheus alert rules in `docker/prometheus/rules/meditrack-alerts.yml`
+- **Tracing** - Zipkin with trace IDs propagated through the services
+- **Logging** - Structured trace-aware logs written to `logs/<service>.log` and shipped to Loki
+- **Log Explorer** - Grafana Loki datasource with trace-to-log links
 
 ## 🔒 Security
 - **Authentication** - JWT tokens

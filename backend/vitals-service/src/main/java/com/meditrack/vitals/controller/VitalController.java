@@ -24,6 +24,8 @@ import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import com.meditrack.vitals.entity.Patient;
 
 @RestController
 @RequestMapping("/api/vitals")
@@ -40,14 +42,67 @@ public class VitalController {
     
     @Autowired
     private ErrorHandlerService errorHandlerService;
+
+    @Autowired
+    private com.meditrack.vitals.repository.PatientRepository patientRepository;
+
+    private boolean checkDepartmentAccess(Long patientId, String userRole, String userDepartment) {
+        if (userRole == null) {
+            return false;
+        }
+        String normalizedRole = userRole.trim().toUpperCase();
+        if (normalizedRole.equals("ADMIN") || normalizedRole.equals("SYSTEM")) {
+            return true;
+        }
+        if (normalizedRole.equals("CLINICIAN") || normalizedRole.equals("DOCTOR") || normalizedRole.equals("NURSE")) {
+            if (userDepartment == null || userDepartment.trim().isEmpty()) {
+                return false;
+            }
+            Optional<Patient> patientOpt = patientRepository.findById(patientId);
+            if (patientOpt.isEmpty()) {
+                return false;
+            }
+            Patient patient = patientOpt.get();
+            return patient.getDepartment() != null && patient.getDepartment().trim().equalsIgnoreCase(userDepartment.trim());
+        }
+        return false;
+    }
+
+    private boolean checkDepartmentAccessByIdentifier(String patientIdentifier, String userRole, String userDepartment) {
+        if (userRole == null) {
+            return false;
+        }
+        String normalizedRole = userRole.trim().toUpperCase();
+        if (normalizedRole.equals("ADMIN") || normalizedRole.equals("SYSTEM")) {
+            return true;
+        }
+        if (normalizedRole.equals("CLINICIAN") || normalizedRole.equals("DOCTOR") || normalizedRole.equals("NURSE")) {
+            if (userDepartment == null || userDepartment.trim().isEmpty()) {
+                return false;
+            }
+            Optional<Patient> patientOpt = patientRepository.findByPatientIdentifier(patientIdentifier);
+            if (patientOpt.isEmpty()) {
+                return false;
+            }
+            Patient patient = patientOpt.get();
+            return patient.getDepartment() != null && patient.getDepartment().trim().equalsIgnoreCase(userDepartment.trim());
+        }
+        return false;
+    }
     
     // Create vital reading
     @PostMapping
     @Counted(value = "vital.api.created", description = "Number of vitals created via API")
     @Timed(value = "vital.api.create.time", description = "Time taken to create vital via API")
     public ResponseEntity<?> createVitalReading(@Valid @RequestBody VitalReadingMessage vitalMessage,
+                                              @RequestHeader(value = "X-User-Role", required = false) String userRole,
+                                              @RequestHeader(value = "X-User-Department", required = false) String userDepartment,
                                               @RequestHeader(value = "X-User-Id", required = false) String userId) {
         try {
+            if (!checkDepartmentAccessByIdentifier(vitalMessage.getPatientIdentifier(), userRole, userDepartment)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Access Denied", "message", "You are not authorized to log vitals for patients in other departments"));
+            }
             // Rate limiting check
             RateLimitResult rateLimitResult = rateLimitingService.checkVitalIngestionRateLimit(
                 vitalMessage.getPatientIdentifier(), vitalMessage.getVitalType());
@@ -78,7 +133,7 @@ public class VitalController {
             logger.error("Error creating vital reading: {}", e.getMessage(), e);
             
             ErrorHandlerService.ErrorResult errorResult = errorHandlerService.handleError(
-                e, "CREATE_VITAL", Map.of("userId", userId, "vitalMessage", vitalMessage));
+                e, "CREATE_VITAL", buildContext("userId", userId, "vitalMessage", vitalMessage));
             
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of(
@@ -99,9 +154,15 @@ public class VitalController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole,
+            @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
         
         try {
+            if (!checkDepartmentAccess(patientId, userRole, userDepartment)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Access Denied", "message", "You are not authorized to view vitals for patients in other departments"));
+            }
             // Rate limiting check
             RateLimitResult rateLimitResult = rateLimitingService.checkPatientRateLimit(String.valueOf(patientId));
             
@@ -123,7 +184,7 @@ public class VitalController {
             logger.error("Error getting vital readings for patient {}: {}", patientId, e.getMessage(), e);
             
             ErrorHandlerService.ErrorResult errorResult = errorHandlerService.handleError(
-                e, "READ_PATIENT_VITALS", Map.of("patientId", patientId, "vitalType", vitalType));
+                e, "READ_PATIENT_VITALS", buildContext("patientId", patientId, "vitalType", vitalType));
             
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of(
@@ -138,8 +199,14 @@ public class VitalController {
     @GetMapping("/patient/{patientId}/latest")
     @Counted(value = "vital.api.read.latest", description = "Number of latest vitals read via API")
     @Timed(value = "vital.api.read.latest.time", description = "Time taken to read latest vitals via API")
-    public ResponseEntity<?> getLatestVitals(@PathVariable Long patientId) {
+    public ResponseEntity<?> getLatestVitals(@PathVariable Long patientId,
+                                             @RequestHeader(value = "X-User-Role", required = false) String userRole,
+                                             @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
         try {
+            if (!checkDepartmentAccess(patientId, userRole, userDepartment)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Access Denied", "message", "You are not authorized to view vitals for patients in other departments"));
+            }
             // Rate limiting check
             RateLimitResult rateLimitResult = rateLimitingService.checkPatientRateLimit(String.valueOf(patientId));
             
@@ -160,7 +227,7 @@ public class VitalController {
             logger.error("Error getting latest vitals for patient {}: {}", patientId, e.getMessage(), e);
             
             ErrorHandlerService.ErrorResult errorResult = errorHandlerService.handleError(
-                e, "READ_LATEST_VITALS", Map.of("patientId", patientId));
+                e, "READ_LATEST_VITALS", buildContext("patientId", patientId));
             
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of(
@@ -177,9 +244,15 @@ public class VitalController {
     @Timed(value = "vital.api.read.abnormal.time", description = "Time taken to read abnormal vitals via API")
     public ResponseEntity<?> getAbnormalReadings(
             @PathVariable Long patientId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime since) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime since,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole,
+            @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
         
         try {
+            if (!checkDepartmentAccess(patientId, userRole, userDepartment)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Access Denied", "message", "You are not authorized to view vitals for patients in other departments"));
+            }
             if (since == null) {
                 since = LocalDateTime.now().minusHours(24); // Default to last 24 hours
             }
@@ -204,7 +277,7 @@ public class VitalController {
             logger.error("Error getting abnormal readings for patient {}: {}", patientId, e.getMessage(), e);
             
             ErrorHandlerService.ErrorResult errorResult = errorHandlerService.handleError(
-                e, "READ_ABNORMAL_VITALS", Map.of("patientId", patientId, "since", since));
+                e, "READ_ABNORMAL_VITALS", buildContext("patientId", patientId, "since", since));
             
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of(
@@ -221,9 +294,15 @@ public class VitalController {
     @Timed(value = "vital.api.read.critical.time", description = "Time taken to read critical vitals via API")
     public ResponseEntity<?> getCriticalReadings(
             @PathVariable Long patientId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime since) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime since,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole,
+            @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
         
         try {
+            if (!checkDepartmentAccess(patientId, userRole, userDepartment)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Access Denied", "message", "You are not authorized to view vitals for patients in other departments"));
+            }
             if (since == null) {
                 since = LocalDateTime.now().minusHours(24); // Default to last 24 hours
             }
@@ -248,7 +327,7 @@ public class VitalController {
             logger.error("Error getting critical readings for patient {}: {}", patientId, e.getMessage(), e);
             
             ErrorHandlerService.ErrorResult errorResult = errorHandlerService.handleError(
-                e, "READ_CRITICAL_VITALS", Map.of("patientId", patientId, "since", since));
+                e, "READ_CRITICAL_VITALS", buildContext("patientId", patientId, "since", since));
             
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of(
@@ -263,8 +342,14 @@ public class VitalController {
     @GetMapping("/patient/{patientId}/summary")
     @Counted(value = "vital.api.read.summary", description = "Number of vital summaries read via API")
     @Timed(value = "vital.api.read.summary.time", description = "Time taken to read vital summary via API")
-    public ResponseEntity<?> getVitalSummary(@PathVariable Long patientId) {
+    public ResponseEntity<?> getVitalSummary(@PathVariable Long patientId,
+                                             @RequestHeader(value = "X-User-Role", required = false) String userRole,
+                                             @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
         try {
+            if (!checkDepartmentAccess(patientId, userRole, userDepartment)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Access Denied", "message", "You are not authorized to view vitals for patients in other departments"));
+            }
             // Rate limiting check
             RateLimitResult rateLimitResult = rateLimitingService.checkPatientRateLimit(String.valueOf(patientId));
             
@@ -338,8 +423,12 @@ public class VitalController {
     @GetMapping("/stats")
     @Counted(value = "vital.api.stats", description = "Number of stats requests via API")
     @Timed(value = "vital.api.stats.time", description = "Time taken for stats request via API")
-    public ResponseEntity<?> getServiceStats() {
+    public ResponseEntity<?> getServiceStats(@RequestHeader(value = "X-User-Role", required = false) String userRole) {
         try {
+            if (userRole == null || (!userRole.equalsIgnoreCase("admin") && !userRole.equalsIgnoreCase("system"))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Access Denied", "message", "Only administrators can view service statistics"));
+            }
             Map<String, Object> stats = Map.of(
                 "timestamp", LocalDateTime.now(),
                 "service", "vitals-service",
@@ -372,6 +461,9 @@ public class VitalController {
         
         ErrorHandlerService.ErrorResult errorResult = errorHandlerService.handleError(
             e, "GLOBAL_EXCEPTION", Map.of());
+        if (errorResult == null) {
+            errorResult = new ErrorHandlerService.ErrorResult(false, 0, "SYSTEM_ERROR", "An unexpected error occurred");
+        }
         
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(Map.of(
@@ -380,5 +472,17 @@ public class VitalController {
                 "shouldRetry", errorResult.shouldRetry(),
                 "timestamp", LocalDateTime.now()
             ));
+    }
+    
+    private Map<String, Object> buildContext(Object... entries) {
+        Map<String, Object> context = new java.util.LinkedHashMap<>();
+        for (int i = 0; i + 1 < entries.length; i += 2) {
+            Object key = entries[i];
+            Object value = entries[i + 1];
+            if (key != null && value != null) {
+                context.put(String.valueOf(key), value);
+            }
+        }
+        return context;
     }
 }

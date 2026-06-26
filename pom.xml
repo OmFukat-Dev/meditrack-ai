@@ -11,7 +11,7 @@
     <packaging>pom</packaging>
 
     <name>MediTrack AI</name>
-    <description>Health Monitoring & Predictive Alerts System</description>
+    <description>Health Monitoring &amp; Predictive Alerts System</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -23,7 +23,7 @@
         <spring-cloud.version>2023.0.0</spring-cloud.version>
         
         <!-- Database -->
-        <mysql.version>8.2.0</mysql.version>
+        <mysql.version>8.0.33</mysql.version>
         <redis.version>4.4.6</redis.version>
         <flyway.version>9.22.3</flyway.version>
         
@@ -34,7 +34,7 @@
         <!-- AI/ML -->
         <weka.version>3.8.6</weka.version>
         <hapi-fhir.version>6.8.0</hapi-fhir.version>
-        
+
         <!-- Testing -->
         <junit.version>5.10.0</junit.version>
         <testcontainers.version>1.19.3</testcontainers.version>
@@ -44,7 +44,7 @@
         
         <!-- Monitoring -->
         <micrometer.version>1.12.0</micrometer.version>
-        <zipkin.version>2.24.3</zipkin.version>
+        <swagger-models.version>2.2.48</swagger-models.version>
         
         <!-- Plugins -->
         <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
@@ -53,15 +53,19 @@
     </properties>
 
     <modules>
-        <module>eureka-server</module>
-        <module>api-gateway</module>
-        <module>patient-service</module>
-        <module>vitals-service</module>
-        <module>ai-prediction</module>
-        <module>alert-service</module>
-        <module>notification-service</module>
-        <module>vital-simulator</module>
-        <module>report-service</module>
+        <module>backend/common-security</module>
+        <module>backend/eureka-server</module>
+        <module>backend/api-gateway</module>
+        <module>backend/user-service</module>
+        <module>backend/patient-service</module>
+        <module>backend/vitals-service</module>
+        <module>backend/ai-prediction</module>
+        <module>backend/alert-service</module>
+        <module>backend/notification-service</module>
+        <module>backend/vital-simulator</module>
+        <module>backend/report-service</module>
+        <module>backend/audit-service</module>
+        <module>backend/monitoring-service</module>
     </modules>
 
     <dependencyManagement>
@@ -180,9 +184,15 @@
             </dependency>
             
             <dependency>
-                <groupId>io.zipkin.reporter2</groupId>
-                <artifactId>zipkin-reporter-brave</artifactId>
-                <version>${zipkin.version}</version>
+                <groupId>io.swagger.core.v3</groupId>
+                <artifactId>swagger-models</artifactId>
+                <version>${swagger-models.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.meditrack</groupId>
+                <artifactId>common-security</artifactId>
+                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -210,12 +220,17 @@
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
-        
+
+        <!-- Tracing -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-brave</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>io.zipkin.reporter2</groupId>
             <artifactId>zipkin-reporter-brave</artifactId>
         </dependency>
-
         <!-- Testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -251,6 +266,13 @@
                             </exclude>
                         </excludes>
                     </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>repackage</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                 </plugin>
                 
                 <plugin>

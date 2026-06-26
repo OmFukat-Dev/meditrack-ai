@@ -1,18 +1,38 @@
 package com.meditrack.patient.fhir;
 
 import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.model.api.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.meditrack.patient.security.PatientAccessContext;
 import com.meditrack.patient.entity.FhirResource;
 import com.meditrack.patient.entity.Patient;
 import com.meditrack.patient.repository.FhirResourceRepository;
 import com.meditrack.patient.repository.PatientRepository;
+import org.hl7.fhir.instance.model.api.IBaseResource;
+import org.hl7.fhir.r4.model.Address;
+import org.hl7.fhir.r4.model.BooleanType;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Condition;
+import org.hl7.fhir.r4.model.ContactPoint;
+import org.hl7.fhir.r4.model.Enumerations;
+import org.hl7.fhir.r4.model.Extension;
+import org.hl7.fhir.r4.model.HumanName;
+import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.IdType;
+import org.hl7.fhir.r4.model.Observation;
+import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.StringType;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,220 +40,412 @@ import java.util.UUID;
 @Service
 @Transactional
 public class FhirPatientService {
-    
+
+    private static final int DEFAULT_PAGE_SIZE = 100;
+    private static final int MAX_PAGE_SIZE = 500;
+
     @Autowired
     private PatientRepository patientRepository;
-    
+
     @Autowired
     private FhirResourceRepository fhirResourceRepository;
-    
+
     @Autowired
     private FhirContext fhirContext;
-    
-    @Autowired
-    private ObjectMapper objectMapper;
-    
-    // FHIR Patient Resource Operations
+
     public org.hl7.fhir.r4.model.Patient createFhirPatient(Long patientId, String createdBy) {
-        Patient patient = patientRepository.findById(patientId)
-            .orElseThrow(() -> new IllegalArgumentException("Patient not found with id: " + patientId));
-        
+        PatientAccessContext accessContext = currentAccessContext();
+        Patient patient = loadPatient(patientId);
+        assertCanManagePatient(patient, accessContext);
         org.hl7.fhir.r4.model.Patient fhirPatient = convertToFhirPatient(patient);
-        
-        // Save FHIR resource to database
-        FhirResource fhirResource = new FhirResource(
-            patient, 
-            FhirResource.FhirResourceType.PATIENT, 
-            fhirPatient.getIdElement().getIdPart(),
-            serializeFhirResource(fhirPatient)
-        );
-        fhirResource.setCreatedBy(createdBy);
-        fhirResourceRepository.save(fhirResource);
-        
+        persistFhirResource(patient, FhirResource.FhirResourceType.PATIENT, patient.getPatientIdentifier(), fhirPatient);
         return fhirPatient;
     }
-    
+
     public org.hl7.fhir.r4.model.Patient updateFhirPatient(Long patientId, String updatedBy) {
-        Patient patient = patientRepository.findById(patientId)
-            .orElseThrow(() -> new IllegalArgumentException("Patient not found with id: " + patientId));
-        
+        PatientAccessContext accessContext = currentAccessContext();
+        Patient patient = loadPatient(patientId);
+        assertCanManagePatient(patient, accessContext);
         org.hl7.fhir.r4.model.Patient fhirPatient = convertToFhirPatient(patient);
-        
-        // Update existing FHIR resource or create new one
-        Optional<FhirResource> existingResource = fhirResourceRepository
-            .findByPatientIdAndResourceIdAndResourceVersion(patientId, fhirPatient.getIdElement().getIdPart(), "1");
-        
-        if (existingResource.isPresent()) {
-            FhirResource resource = existingResource.get();
-            resource.setResourceData(serializeFhirResource(fhirPatient));
-            resource.setUpdatedBy(updatedBy);
-            fhirResourceRepository.save(resource);
-        } else {
-            FhirResource fhirResource = new FhirResource(
-                patient, 
-                FhirResource.FhirResourceType.PATIENT, 
-                fhirPatient.getIdElement().getIdPart(),
-                serializeFhirResource(fhirPatient)
-            );
-            fhirResource.setCreatedBy(updatedBy);
-            fhirResourceRepository.save(fhirResource);
-        }
-        
+        persistFhirResource(patient, FhirResource.FhirResourceType.PATIENT, patient.getPatientIdentifier(), fhirPatient);
         return fhirPatient;
     }
-    
+
+    @Transactional(readOnly = true)
     public org.hl7.fhir.r4.model.Patient getFhirPatient(Long patientId) {
-        Patient patient = patientRepository.findById(patientId)
-            .orElseThrow(() -> new IllegalArgumentException("Patient not found with id: " + patientId));
-        
-        // Try to get latest FHIR patient resource
-        Optional<FhirResource> fhirResource = fhirResourceRepository
-            .findLatestVersionByPatientIdAndResourceTypeAndResourceId(
-                patientId, 
-                FhirResource.FhirResourceType.PATIENT, 
+        Patient patient = loadPatient(patientId);
+        assertCanViewPatient(patient);
+        return fhirResourceRepository
+            .findFirstByPatientIdAndResourceTypeAndResourceIdOrderByCreatedAtDesc(
+                patientId,
+                FhirResource.FhirResourceType.PATIENT,
                 patient.getPatientIdentifier()
-            );
-        
-        if (fhirResource.isPresent()) {
-            return deserializeFhirResource(fhirResource.get().getResourceData(), org.hl7.fhir.r4.model.Patient.class);
-        } else {
-            // Create FHIR patient from database entity if no FHIR resource exists
-            return convertToFhirPatient(patient);
+            )
+            .map(resource -> deserializeFhirResource(resource.getResourceData(), org.hl7.fhir.r4.model.Patient.class))
+            .orElseGet(() -> {
+                org.hl7.fhir.r4.model.Patient fhirPatient = convertToFhirPatient(patient);
+                fhirPatient.setId(patient.getPatientIdentifier());
+                return fhirPatient;
+            });
+    }
+
+    @Transactional(readOnly = true)
+    public Bundle getAllFhirPatients() {
+        return getAllFhirPatients(0, DEFAULT_PAGE_SIZE);
+    }
+
+    @Transactional(readOnly = true)
+    public Bundle getAllFhirPatients(int page, int size) {
+        PatientAccessContext accessContext = currentAccessContext();
+        PageRequest pageable = resolvePageRequest(page, size);
+
+        if (accessContext.isAdmin()) {
+            Page<Patient> activePatients = patientRepository.findByIsActive(true, pageable);
+            return buildPatientBundle(activePatients.getContent(), Bundle.BundleType.SEARCHSET, activePatients.getTotalElements());
         }
+
+        List<Patient> accessiblePatients = getAccessiblePatients(accessContext);
+        List<Patient> pagePatients = pageAccessiblePatients(accessContext, pageable);
+        return buildPatientBundle(pagePatients, Bundle.BundleType.SEARCHSET, accessiblePatients.size());
     }
-    
-    public List<org.hl7.fhir.r4.model.Patient> getAllFhirPatients() {
-        List<Patient> patients = patientRepository.findByIsActive(true);
-        return patients.stream()
-            .map(this::convertToFhirPatient)
-            .toList();
-    }
-    
+
     public void deleteFhirPatient(Long patientId) {
-        Patient patient = patientRepository.findById(patientId)
-            .orElseThrow(() -> new IllegalArgumentException("Patient not found with id: " + patientId));
-        
-        // Soft delete patient and related FHIR resources
+        PatientAccessContext accessContext = currentAccessContext();
+        Patient patient = loadPatient(patientId);
+        assertCanManagePatient(patient, accessContext);
         patient.setIsActive(false);
         patientRepository.save(patient);
-        
         fhirResourceRepository.deleteByPatientIdAndResourceType(patientId, FhirResource.FhirResourceType.PATIENT);
     }
-    
-    // FHIR Observation Resource Operations (for vitals)
-    public org.hl7.fhir.r4.model.Observation createFhirObservation(Long patientId, 
-                                                                      org.hl7.fhir.r4.model.Observation observation, 
-                                                                      String createdBy) {
-        Patient patient = patientRepository.findById(patientId)
-            .orElseThrow(() -> new IllegalArgumentException("Patient not found with id: " + patientId));
-        
-        // Set patient reference
-        Reference patientReference = new Reference("Patient/" + patient.getPatientIdentifier());
-        observation.setSubject(patientReference);
-        
-        // Save FHIR resource
-        FhirResource fhirResource = new FhirResource(
-            patient, 
-            FhirResource.FhirResourceType.OBSERVATION, 
-            observation.getIdElement().getIdPart(),
-            serializeFhirResource(observation)
-        );
-        fhirResource.setCreatedBy(createdBy);
-        fhirResourceRepository.save(fhirResource);
-        
+
+    public Observation createFhirObservation(Long patientId, Observation observation, String createdBy) {
+        PatientAccessContext accessContext = currentAccessContext();
+        Patient patient = loadPatient(patientId);
+        assertCanManagePatient(patient, accessContext);
+        observation.setSubject(new Reference("Patient/" + patient.getPatientIdentifier()));
+
+        String resourceId = resolveResourceId(observation.getIdElement().getIdPart());
+        observation.setId(resourceId);
+        persistFhirResource(patient, FhirResource.FhirResourceType.OBSERVATION, resourceId, observation);
         return observation;
     }
-    
-    public List<org.hl7.fhir.r4.model.Observation> getFhirObservations(Long patientId) {
+
+    @Transactional(readOnly = true)
+    public List<Observation> getFhirObservations(Long patientId) {
+        PatientAccessContext accessContext = currentAccessContext();
+        Patient patient = loadPatient(patientId);
+        assertCanViewPatient(patient, accessContext);
         List<FhirResource> fhirResources = fhirResourceRepository
             .findByPatientIdAndResourceType(patientId, FhirResource.FhirResourceType.OBSERVATION);
-        
+
         return fhirResources.stream()
-            .map(resource -> deserializeFhirResource(resource.getResourceData(), org.hl7.fhir.r4.model.Observation.class))
+            .map(resource -> deserializeFhirResource(resource.getResourceData(), Observation.class))
             .toList();
     }
-    
-    // FHIR Condition Resource Operations (for medical history)
-    public org.hl7.fhir.r4.model.Condition createFhirCondition(Long patientId, 
-                                                              org.hl7.fhir.r4.model.Condition condition, 
-                                                              String createdBy) {
-        Patient patient = patientRepository.findById(patientId)
-            .orElseThrow(() -> new IllegalArgumentException("Patient not found with id: " + patientId));
-        
-        // Set patient reference
-        Reference patientReference = new Reference("Patient/" + patient.getPatientIdentifier());
-        condition.setSubject(patientReference);
-        
-        // Save FHIR resource
-        FhirResource fhirResource = new FhirResource(
-            patient, 
-            FhirResource.FhirResourceType.CONDITION, 
-            condition.getIdElement().getIdPart(),
-            serializeFhirResource(condition)
-        );
-        fhirResource.setCreatedBy(createdBy);
-        fhirResourceRepository.save(fhirResource);
-        
+
+    public Condition createFhirCondition(Long patientId, Condition condition, String createdBy) {
+        PatientAccessContext accessContext = currentAccessContext();
+        Patient patient = loadPatient(patientId);
+        assertCanManagePatient(patient, accessContext);
+        condition.setSubject(new Reference("Patient/" + patient.getPatientIdentifier()));
+
+        String resourceId = resolveResourceId(condition.getIdElement().getIdPart());
+        condition.setId(resourceId);
+        persistFhirResource(patient, FhirResource.FhirResourceType.CONDITION, resourceId, condition);
         return condition;
     }
-    
-    public List<org.hl7.fhir.r4.model.Condition> getFhirConditions(Long patientId) {
+
+    @Transactional(readOnly = true)
+    public List<Condition> getFhirConditions(Long patientId) {
+        PatientAccessContext accessContext = currentAccessContext();
+        Patient patient = loadPatient(patientId);
+        assertCanViewPatient(patient, accessContext);
         List<FhirResource> fhirResources = fhirResourceRepository
             .findByPatientIdAndResourceType(patientId, FhirResource.FhirResourceType.CONDITION);
-        
+
         return fhirResources.stream()
-            .map(resource -> deserializeFhirResource(resource.getResourceData(), org.hl7.fhir.r4.model.Condition.class))
+            .map(resource -> deserializeFhirResource(resource.getResourceData(), Condition.class))
             .toList();
     }
-    
-    // Utility Methods
+
+    @Transactional(readOnly = true)
+    public Bundle getPatientBundle(Long patientId) {
+        PatientAccessContext accessContext = currentAccessContext();
+        Patient patient = loadPatient(patientId);
+        assertCanViewPatient(patient, accessContext);
+        List<Patient> patients = List.of(patient);
+        Bundle bundle = buildPatientBundle(patients);
+
+        List<Condition> conditions = getFhirConditions(patientId);
+        for (Condition condition : conditions) {
+            Bundle.BundleEntryComponent entry = new Bundle.BundleEntryComponent();
+            entry.setFullUrl("Condition/" + condition.getIdElement().getIdPart());
+            entry.setResource(condition);
+            bundle.addEntry(entry);
+        }
+
+        List<Observation> observations = getFhirObservations(patientId);
+        for (Observation observation : observations) {
+            Bundle.BundleEntryComponent entry = new Bundle.BundleEntryComponent();
+            entry.setFullUrl("Observation/" + observation.getIdElement().getIdPart());
+            entry.setResource(observation);
+            bundle.addEntry(entry);
+        }
+
+        return bundle;
+    }
+
+    @Transactional(readOnly = true)
+    public Bundle searchPatients(String identifier, String name, String gender, LocalDate birthDate) {
+        return searchPatients(identifier, name, gender, birthDate, 0, DEFAULT_PAGE_SIZE);
+    }
+
+    @Transactional(readOnly = true)
+    public Bundle searchPatients(String identifier, String name, String gender, LocalDate birthDate, int page, int size) {
+        PatientAccessContext accessContext = currentAccessContext();
+        List<Patient> matches = new ArrayList<>();
+
+        if (!accessContext.isAdmin()) {
+            List<Patient> accessiblePatients = getAccessiblePatients(accessContext);
+            if (identifier != null && !identifier.isBlank()) {
+                matches = accessiblePatients.stream()
+                    .filter(patient -> identifier.equalsIgnoreCase(patient.getPatientIdentifier()))
+                    .filter(patient -> birthDate == null || birthDate.equals(patient.getDateOfBirth()))
+                    .toList();
+                return buildPatientBundle(pageBundle(matches, page, size), Bundle.BundleType.SEARCHSET, matches.size());
+            }
+
+            List<Patient> filtered = accessiblePatients.stream()
+                .filter(patient -> name == null || name.isBlank() || patientMatchesName(patient, name))
+                .filter(patient -> gender == null || gender.isBlank() || gender.equalsIgnoreCase(patient.getGender()))
+                .filter(patient -> birthDate == null || birthDate.equals(patient.getDateOfBirth()))
+                .collect(java.util.stream.Collectors.toList());
+
+            return buildPatientBundle(pageBundle(filtered, page, size), Bundle.BundleType.SEARCHSET, filtered.size());
+        }
+
+        if (identifier != null && !identifier.isBlank()) {
+            patientRepository.findByPatientIdentifier(identifier).ifPresent(matches::add);
+            if (birthDate != null) {
+                matches = matches.stream()
+                    .filter(patient -> birthDate.equals(patient.getDateOfBirth()))
+                    .toList();
+            }
+            return buildPatientBundle(matches, Bundle.BundleType.SEARCHSET, matches.size());
+        } else {
+            Page<Patient> resultPage = patientRepository.advancedSearch(
+                name,
+                name,
+                gender,
+                null,
+                null,
+                null,
+                null,
+                birthDate,
+                null,
+                null,
+                null,
+                resolvePageRequest(page, size)
+            );
+            matches.addAll(resultPage.getContent());
+            return buildPatientBundle(matches, Bundle.BundleType.SEARCHSET, resultPage.getTotalElements());
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public boolean validateFhirPatient(org.hl7.fhir.r4.model.Patient fhirPatient) {
+        try {
+            if (fhirPatient.getName() == null || fhirPatient.getName().isEmpty()) {
+                return false;
+            }
+
+            HumanName name = fhirPatient.getName().get(0);
+            if (name.getFamily() == null || name.getGiven() == null || name.getGiven().isEmpty()) {
+                return false;
+            }
+
+            return fhirPatient.getGender() != null && fhirPatient.getBirthDate() != null;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public boolean validateFhirCondition(Condition condition) {
+        try {
+            return condition.getSubject() != null
+                && condition.getCode() != null
+                && condition.getSubject().getReference() != null
+                && condition.getSubject().getReference().startsWith("Patient/");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public boolean validateFhirObservation(Observation observation) {
+        try {
+            return observation.getSubject() != null
+                && observation.getCode() != null
+                && observation.getSubject().getReference() != null
+                && observation.getSubject().getReference().startsWith("Patient/")
+                && observation.getEffective() != null;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private Patient loadPatient(Long patientId) {
+        return patientRepository.findById(patientId)
+            .orElseThrow(() -> new IllegalArgumentException("Patient not found with id: " + patientId));
+    }
+
+    private PatientAccessContext currentAccessContext() {
+        return PatientAccessContext.fromCurrentRequest();
+    }
+
+    private void assertCanViewPatient(Patient patient) {
+        assertCanViewPatient(patient, currentAccessContext());
+    }
+
+    private void assertCanViewPatient(Patient patient, PatientAccessContext accessContext) {
+        if (!accessContext.canViewPatient(patient)) {
+            throw new AccessDeniedException("You do not have access to this patient");
+        }
+    }
+
+    private void assertCanManagePatient(Patient patient, PatientAccessContext accessContext) {
+        if (!accessContext.canManagePatient(patient)) {
+            throw new AccessDeniedException("You do not have permission to modify this patient");
+        }
+    }
+
+    private List<Patient> getAccessiblePatients(PatientAccessContext accessContext) {
+        if (accessContext.isAdmin()) {
+            return patientRepository.findByIsActive(true);
+        }
+
+        if (accessContext.isClinician() || accessContext.isNurse()) {
+            if (accessContext.getDepartment() == null || accessContext.getDepartment().isBlank()) {
+                throw new AccessDeniedException("Department is required to access patient records");
+            }
+            return patientRepository.findByDepartmentIgnoreCaseAndIsActive(accessContext.getDepartment(), true);
+        }
+
+        if (accessContext.isViewer()) {
+            return patientRepository.findByViewerEmailIgnoreCaseAndIsActive(accessContext.getEmail(), true);
+        }
+
+        throw new AccessDeniedException("Unable to resolve access scope");
+    }
+
+    private List<Patient> pageAccessiblePatients(PatientAccessContext accessContext, Pageable pageable) {
+        List<Patient> patients = getAccessiblePatients(accessContext);
+        int start = (int) pageable.getOffset();
+        if (start >= patients.size()) {
+            return List.of();
+        }
+
+        int end = Math.min(start + pageable.getPageSize(), patients.size());
+        return new ArrayList<>(patients.subList(start, end));
+    }
+
+    private List<Patient> pageBundle(List<Patient> patients, int page, int size) {
+        PageRequest pageable = resolvePageRequest(page, size);
+        int start = (int) pageable.getOffset();
+        if (start >= patients.size()) {
+            return List.of();
+        }
+
+        int end = Math.min(start + pageable.getPageSize(), patients.size());
+        return new ArrayList<>(patients.subList(start, end));
+    }
+
+    private boolean patientMatchesName(Patient patient, String query) {
+        String normalized = query.trim().toLowerCase();
+        return containsIgnoreCase(patient.getFirstName(), normalized)
+            || containsIgnoreCase(patient.getLastName(), normalized)
+            || containsIgnoreCase(patient.getFullName(), normalized)
+            || containsIgnoreCase(patient.getPatientIdentifier(), normalized);
+    }
+
+    private boolean containsIgnoreCase(String value, String query) {
+        if (value == null || query == null || query.isBlank()) {
+            return false;
+        }
+
+        return value.toLowerCase().contains(query.toLowerCase());
+    }
+
+    private void persistFhirResource(Patient patient,
+                                     FhirResource.FhirResourceType resourceType,
+                                     String resourceId,
+                                     IBaseResource resource) {
+        String resolvedResourceId = resolveResourceId(resourceId);
+        String serialized = serializeFhirResource(resource);
+
+        FhirResource fhirResource = fhirResourceRepository
+            .findFirstByPatientIdAndResourceTypeAndResourceIdAndResourceVersion(
+                patient.getId(),
+                resourceType,
+                resolvedResourceId,
+                "1"
+            )
+            .orElseGet(() -> new FhirResource(patient, resourceType, resolvedResourceId, serialized));
+
+        fhirResource.setPatient(patient);
+        fhirResource.setResourceType(resourceType);
+        fhirResource.setResourceId(resolvedResourceId);
+        fhirResource.setResourceVersion("1");
+        fhirResource.setResourceData(serialized);
+        fhirResourceRepository.save(fhirResource);
+    }
+
     private org.hl7.fhir.r4.model.Patient convertToFhirPatient(Patient patient) {
         org.hl7.fhir.r4.model.Patient fhirPatient = new org.hl7.fhir.r4.model.Patient();
-        
-        // Set identifier
+
+        if (patient.getPatientIdentifier() != null) {
+            fhirPatient.setId(patient.getPatientIdentifier());
+        }
+
         Identifier identifier = new Identifier();
         identifier.setSystem("urn:meditrack:patient:id");
         identifier.setValue(patient.getPatientIdentifier());
         fhirPatient.addIdentifier(identifier);
-        
-        // Set name
+
         HumanName name = new HumanName();
         name.setFamily(patient.getLastName());
-        name.addGivenElement(new StringType(patient.getFirstName()));
+        name.addGiven(patient.getFirstName());
         fhirPatient.addName(name);
-        
-        // Set gender
-        try {
-            Enumerations.AdministrativeGender fhirGender = Enumerations.AdministrativeGender.fromCode(patient.getGender().toLowerCase());
-            fhirPatient.setGender(fhirGender);
-        } catch (Exception e) {
+
+        if (patient.getGender() != null) {
+            try {
+                fhirPatient.setGender(Enumerations.AdministrativeGender.fromCode(patient.getGender().toLowerCase()));
+            } catch (Exception e) {
+                fhirPatient.setGender(Enumerations.AdministrativeGender.UNKNOWN);
+            }
+        } else {
             fhirPatient.setGender(Enumerations.AdministrativeGender.UNKNOWN);
         }
-        
-        // Set birth date
+
         if (patient.getDateOfBirth() != null) {
-            fhirPatient.setBirthDate(Date.from(patient.getDateOfBirth().atStartOfDay().toInstant(java.time.ZoneOffset.UTC)));
+            fhirPatient.setBirthDate(Date.from(patient.getDateOfBirth().atStartOfDay().toInstant(ZoneOffset.UTC)));
         }
-        
-        // Set contact information
-        if (patient.getPhoneNumber() != null || patient.getEmail() != null) {
-            ContactPoint contact = new ContactPoint();
-            if (patient.getPhoneNumber() != null) {
-                ContactPoint phoneContact = new ContactPoint();
-                phoneContact.setSystem(ContactPoint.ContactPointSystem.PHONE);
-                phoneContact.setValue(patient.getPhoneNumber());
-                contact.addTelecom(phoneContact);
-            }
-            if (patient.getEmail() != null) {
-                ContactPoint emailContact = new ContactPoint();
-                emailContact.setSystem(ContactPoint.ContactPointSystem.EMAIL);
-                emailContact.setValue(patient.getEmail());
-                contact.addTelecom(emailContact);
-            }
-            fhirPatient.addTelecom(contact);
+
+        if (patient.getPhoneNumber() != null) {
+            ContactPoint phone = new ContactPoint();
+            phone.setSystem(ContactPoint.ContactPointSystem.PHONE);
+            phone.setValue(patient.getPhoneNumber());
+            fhirPatient.addTelecom(phone);
         }
-        
-        // Set address
+
+        if (patient.getEmail() != null) {
+            ContactPoint email = new ContactPoint();
+            email.setSystem(ContactPoint.ContactPointSystem.EMAIL);
+            email.setValue(patient.getEmail());
+            fhirPatient.addTelecom(email);
+        }
+
         if (patient.getAddress() != null) {
             Address address = new Address();
             address.setUse(Address.AddressUse.HOME);
@@ -241,176 +453,85 @@ public class FhirPatientService {
             address.setText(patient.getAddress());
             fhirPatient.addAddress(address);
         }
-        
-        // Set emergency contact
+
         if (patient.getEmergencyContactName() != null || patient.getEmergencyContactPhone() != null) {
-            ContactComponent emergencyContact = new ContactComponent();
+            org.hl7.fhir.r4.model.Patient.ContactComponent contact = new org.hl7.fhir.r4.model.Patient.ContactComponent();
             HumanName emergencyName = new HumanName();
             emergencyName.setText(patient.getEmergencyContactName());
-            emergencyContact.setName(emergencyName);
-            
+            contact.setName(emergencyName);
+
             if (patient.getEmergencyContactPhone() != null) {
                 ContactPoint emergencyPhone = new ContactPoint();
                 emergencyPhone.setSystem(ContactPoint.ContactPointSystem.PHONE);
                 emergencyPhone.setValue(patient.getEmergencyContactPhone());
-                emergencyContact.addTelecom(emergencyPhone);
+                contact.addTelecom(emergencyPhone);
             }
-            
-            fhirPatient.addContact(emergencyContact);
+
+            fhirPatient.addContact(contact);
         }
-        
-        // Set blood type
+
         if (patient.getBloodType() != null) {
-            Extension bloodTypeExtension = new Extension("http://hl7.org/fhir/StructureDefinition/bloodtype", new StringType(patient.getBloodType()));
-            fhirPatient.addExtension(bloodTypeExtension);
+            fhirPatient.addExtension(new Extension(
+                "http://hl7.org/fhir/StructureDefinition/bloodtype",
+                new StringType(patient.getBloodType())
+            ));
         }
-        
-        // Set active status
-        fhirPatient.setActive(new BooleanType(patient.getIsActive()));
-        
-        // Generate ID if not present
-        if (fhirPatient.getId() == null || fhirPatient.getId().isEmpty()) {
-            fhirPatient.setId(new IdType(UUID.randomUUID().toString()));
-        }
-        
+
+        fhirPatient.setActive(Boolean.TRUE.equals(patient.getIsActive()));
         return fhirPatient;
     }
-    
+
     private String serializeFhirResource(IBaseResource resource) {
         try {
-            return objectMapper.writeValueAsString(resource);
+            return fhirContext.newJsonParser().encodeResourceToString(resource);
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize FHIR resource", e);
         }
     }
-    
+
     private <T extends IBaseResource> T deserializeFhirResource(String resourceData, Class<T> clazz) {
         try {
-            return objectMapper.readValue(resourceData, clazz);
+            return fhirContext.newJsonParser().parseResource(clazz, resourceData);
         } catch (Exception e) {
             throw new RuntimeException("Failed to deserialize FHIR resource", e);
         }
     }
-    
-    // FHIR Bundle operations for multiple resources
-    public Bundle getPatientBundle(Long patientId) {
-        Bundle bundle = new Bundle();
-        bundle.setType(Bundle.BundleType.COLLECTION);
-        bundle.setTimestamp(LocalDateTime.now());
-        
-        // Add patient resource
-        org.hl7.fhir.r4.model.Patient fhirPatient = getFhirPatient(patientId);
-        BundleEntryComponent patientEntry = new BundleEntryComponent();
-        patientEntry.setFullUrl("Patient/" + fhirPatient.getId());
-        patientEntry.setResource(fhirPatient);
-        bundle.addEntry(patientEntry);
-        
-        // Add condition resources
-        List<org.hl7.fhir.r4.model.Condition> conditions = getFhirConditions(patientId);
-        for (org.hl7.fhir.r4.model.Condition condition : conditions) {
-            BundleEntryComponent conditionEntry = new BundleEntryComponent();
-            conditionEntry.setFullUrl("Condition/" + condition.getId());
-            conditionEntry.setResource(condition);
-            bundle.addEntry(conditionEntry);
-        }
-        
-        // Add observation resources
-        List<org.hl7.fhir.r4.model.Observation> observations = getFhirObservations(patientId);
-        for (org.hl7.fhir.r4.model.Observation observation : observations) {
-            BundleEntryComponent observationEntry = new BundleEntryComponent();
-            observationEntry.setFullUrl("Observation/" + observation.getId());
-            observationEntry.setResource(observation);
-            bundle.addEntry(observationEntry);
-        }
-        
-        return bundle;
+
+    private Bundle buildPatientBundle(List<Patient> patients) {
+        return buildPatientBundle(patients, Bundle.BundleType.COLLECTION, patients.size());
     }
-    
-    // Search operations
-    public Bundle searchPatients(String identifier, String name, String gender, LocalDate birthDate) {
+
+    private Bundle buildPatientBundle(List<Patient> patients, Bundle.BundleType bundleType, long total) {
         Bundle bundle = new Bundle();
-        bundle.setType(Bundle.BundleType.SEARCHSET);
-        bundle.setTotal(patientRepository.advancedSearch(name, name, gender, null, null, null, null, null, null).getTotalElements());
-        
-        List<Patient> patients = patientRepository.advancedSearch(name, name, gender, null, null, null, null, null, null).getContent();
-        
+        bundle.setType(bundleType);
+        bundle.setTimestamp(new Date());
+        bundle.setTotal(safeTotal(total));
+
         for (Patient patient : patients) {
             org.hl7.fhir.r4.model.Patient fhirPatient = convertToFhirPatient(patient);
-            BundleEntryComponent entry = new BundleEntryComponent();
+            Bundle.BundleEntryComponent entry = new Bundle.BundleEntryComponent();
+            entry.setFullUrl("Patient/" + resolveResourceId(patient.getPatientIdentifier()));
             entry.setResource(fhirPatient);
             bundle.addEntry(entry);
         }
-        
+
         return bundle;
     }
-    
-    // Validation methods
-    public boolean validateFhirPatient(org.hl7.fhir.r4.model.Patient fhirPatient) {
-        try {
-            // Basic validation
-            if (fhirPatient.getName() == null || fhirPatient.getName().isEmpty()) {
-                return false;
-            }
-            
-            HumanName name = fhirPatient.getName().get(0);
-            if (name.getFamily() == null || name.getGiven() == null || name.getGiven().isEmpty()) {
-                return false;
-            }
-            
-            // Gender validation
-            if (fhirPatient.getGender() == null) {
-                return false;
-            }
-            
-            // Birth date validation
-            if (fhirPatient.getBirthDate() == null) {
-                return false;
-            }
-            
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+
+    private PageRequest resolvePageRequest(int page, int size) {
+        int normalizedPage = Math.max(0, page);
+        int normalizedSize = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
+        return PageRequest.of(normalizedPage, normalizedSize);
     }
-    
-    public boolean validateFhirCondition(org.hl7.fhir.r4.model.Condition condition) {
-        try {
-            // Basic validation
-            if (condition.getSubject() == null || condition.getCode() == null) {
-                return false;
-            }
-            
-            // Subject must be a patient reference
-            if (!condition.getSubject().getReference().startsWith("Patient/")) {
-                return false;
-            }
-            
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+
+    private int safeTotal(long total) {
+        return total > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) total;
     }
-    
-    public boolean validateFhirObservation(org.hl7.fhir.r4.model.Observation observation) {
-        try {
-            // Basic validation
-            if (observation.getSubject() == null || observation.getCode() == null) {
-                return false;
-            }
-            
-            // Subject must be a patient reference
-            if (!observation.getSubject().getReference().startsWith("Patient/")) {
-                return false;
-            }
-            
-            // Must have effective date
-            if (observation.getEffective() == null) {
-                return false;
-            }
-            
-            return true;
-        } catch (Exception e) {
-            return false;
+
+    private String resolveResourceId(String resourceId) {
+        if (resourceId == null || resourceId.isBlank()) {
+            return UUID.randomUUID().toString();
         }
+        return resourceId;
     }
 }

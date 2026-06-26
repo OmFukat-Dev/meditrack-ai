@@ -7,8 +7,8 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.servers.Server;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.CorsRegistry;
-import org.springframework.web.servlet.config.WebMvcConfigurer;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.Arrays;
 import java.util.List;
@@ -31,7 +31,7 @@ public class WebConfig implements WebMvcConfigurer {
                     .name("MIT License")
                     .url("https://opensource.org/licenses/MIT")))
             .servers(List.of(
-                new Server().url("http://localhost:8081").description("Development Server"),
+                new Server().url("http://localhost:8082").description("Development Server"),
                 new Server().url("https://api.meditrack.ai/patients").description("Production Server")
             ));
     }
@@ -39,7 +39,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("*")
+                .allowedOriginPatterns("*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)

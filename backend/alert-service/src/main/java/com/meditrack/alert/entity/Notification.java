@@ -45,6 +45,12 @@ public class Notification {
     
     @Column(name = "recall_at")
     private LocalDateTime recallAt;
+
+    @Column(name = "provider_reference", columnDefinition = "TEXT")
+    private String providerReference;
+
+    @Column(name = "failure_reason", columnDefinition = "TEXT")
+    private String failureReason;
     
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -54,6 +60,7 @@ public class Notification {
         this.createdAt = LocalDateTime.now();
         this.status = NotificationStatus.PENDING;
         this.recall = false;
+        this.priority = NotificationPriority.MEDIUM;
     }
     
     public Notification(String id, String recipient, String message, NotificationType notificationType) {
@@ -101,6 +108,12 @@ public class Notification {
     
     public LocalDateTime getRecallAt() { return recallAt; }
     public void setRecallAt(LocalDateTime recallAt) { this.recallAt = recallAt; }
+
+    public String getProviderReference() { return providerReference; }
+    public void setProviderReference(String providerReference) { this.providerReference = providerReference; }
+
+    public String getFailureReason() { return failureReason; }
+    public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
@@ -115,6 +128,6 @@ public class Notification {
     }
     
     public enum NotificationStatus {
-        PENDING, SENT, FAILED, DELIVERED, READ, RECALLED
+        PENDING, SCHEDULED, SENT, FAILED, DELIVERED, READ, RECALLED
     }
 }

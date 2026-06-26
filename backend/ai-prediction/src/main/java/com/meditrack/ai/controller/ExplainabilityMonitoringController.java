@@ -49,7 +49,7 @@ public class ExplainabilityMonitoringController {
             logger.info("Extracting feature importance for model: {}", modelName);
             
             // Get model and data
-            wekaService.WekaService.ModelInfo modelInfo = wekaService.getModelInfo(modelName);
+            WekaService.ModelInfo modelInfo = wekaService.getModelInfo(modelName);
             if (modelInfo == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Model not found", "modelName", modelName));

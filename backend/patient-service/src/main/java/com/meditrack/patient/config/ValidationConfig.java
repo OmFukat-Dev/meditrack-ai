@@ -1,6 +1,5 @@
 package com.meditrack.patient.config;
 
-import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import org.springframework.stereotype.Component;
 
@@ -9,9 +8,7 @@ public class ValidationConfig {
     
     // Custom constraint validators can be added here
     
-    public static class PatientIdentifierValidator implements ConstraintValidator<String, String> {
-        
-        @Override
+    public static class PatientIdentifierValidator {
         public boolean isValid(String value, ConstraintValidatorContext context) {
             if (value == null) return false;
             
@@ -20,9 +17,7 @@ public class ValidationConfig {
         }
     }
     
-    public static class PhoneNumberValidator implements ConstraintValidator<String, String> {
-        
-        @Override
+    public static class PhoneNumberValidator {
         public boolean isValid(String value, ConstraintValidatorContext context) {
             if (value == null) return true; // Optional field
             
@@ -32,9 +27,7 @@ public class ValidationConfig {
         }
     }
     
-    public static class BloodTypeValidator implements ConstraintValidator<String, String> {
-        
-        @Override
+    public static class BloodTypeValidator {
         public boolean isValid(String value, ConstraintValidatorContext context) {
             if (value == null) return true; // Optional field
             
@@ -43,9 +36,7 @@ public class ValidationConfig {
         }
     }
     
-    public static class Icd10CodeValidator implements ConstraintValidator<String, String> {
-        
-        @Override
+    public static class Icd10CodeValidator {
         public boolean isValid(String value, ConstraintValidatorContext context) {
             if (value == null) return true; // Optional field
             
@@ -54,9 +45,7 @@ public class ValidationConfig {
         }
     }
     
-    public static class MedicationRouteValidator implements ConstraintValidator<String, String> {
-        
-        @Override
+    public static class MedicationRouteValidator {
         public boolean isValid(String value, ConstraintValidatorContext context) {
             if (value == null) return false;
             

@@ -9,6 +9,7 @@
         <groupId>com.meditrack</groupId>
         <artifactId>meditrack-ai</artifactId>
         <version>1.0.0</version>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <artifactId>eureka-server</artifactId>

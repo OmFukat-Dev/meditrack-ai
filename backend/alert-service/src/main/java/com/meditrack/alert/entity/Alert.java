@@ -22,6 +22,9 @@ public class Alert {
     
     @Column(name = "patient_id")
     private String patientId;
+
+    @Column(name = "department")
+    private String department;
     
     @Column(name = "vital_type")
     private String vitalType;
@@ -54,7 +57,7 @@ public class Alert {
     // Constructors
     public Alert() {
         this.createdAt = LocalDateTime.now();
-        this.status = AlertStatus.PENDING;
+        this.status = AlertStatus.ACTIVE;
     }
     
     public Alert(String id, String alertType, AlertPriority priority, String message) {
@@ -80,6 +83,9 @@ public class Alert {
     
     public String getPatientId() { return patientId; }
     public void setPatientId(String patientId) { this.patientId = patientId; }
+
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
     
     public String getVitalType() { return vitalType; }
     public void setVitalType(String vitalType) { this.vitalType = vitalType; }
@@ -114,6 +120,6 @@ public class Alert {
     }
     
     public enum AlertStatus {
-        PENDING, PROCESSING, PROCESSED, ESCALATED, RESOLVED, FAILED
+        ACTIVE, ACKNOWLEDGED, IN_PROGRESS, RESOLVED, ESCALATED
     }
 }

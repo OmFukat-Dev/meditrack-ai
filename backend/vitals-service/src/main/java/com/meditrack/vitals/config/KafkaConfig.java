@@ -11,6 +11,9 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -92,13 +95,12 @@ public class KafkaConfig {
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
         factory.getContainerProperties().setPollTimeout(3000);
         factory.getContainerProperties().setIdleBetweenPolls(100);
-        factory.getContainerProperties().setIdleEventInterval(30000);
+        factory.getContainerProperties().setIdleEventInterval(30000L);
         
         // Error handling
-        factory.setCommonErrorHandler(new org.springframework.kafka.listener.DefaultErrorHandler(
-            new org.springframework.kafka.listener.SeekToCurrentErrorHandler(
-                new org.springframework.kafka.listener.DeadLetterPublishingRecoverer(kafkaTemplate()),
-                new org.springframework.kafka.support.serializer.JsonDeserializer<>())
+        factory.setCommonErrorHandler(new DefaultErrorHandler(
+            new DeadLetterPublishingRecoverer(kafkaTemplate()),
+            new FixedBackOff(1000L, 3L)
         ));
         
         return factory;

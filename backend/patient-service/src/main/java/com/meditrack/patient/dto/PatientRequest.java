@@ -42,6 +42,26 @@ public class PatientRequest {
     
     @Pattern(regexp = "^\\+?[0-9\\s\\-()]+$", message = "Invalid emergency contact phone number")
     private String emergencyContactPhone;
+
+    @Size(max = 100, message = "Assigned clinician name must not exceed 100 characters")
+    private String assignedClinicianName;
+
+    @Email(message = "Invalid assigned clinician email format")
+    @Size(max = 120, message = "Assigned clinician email must not exceed 120 characters")
+    private String assignedClinicianEmail;
+
+    @Email(message = "Invalid viewer email format")
+    @Size(max = 120, message = "Viewer email must not exceed 120 characters")
+    private String viewerEmail;
+
+    @Size(max = 100, message = "Department must not exceed 100 characters")
+    private String department;
+
+    @Size(max = 50, message = "Ward number must not exceed 50 characters")
+    private String wardNumber;
+
+    @Size(max = 50, message = "Bed number must not exceed 50 characters")
+    private String bedNumber;
     
     // Constructors
     public PatientRequest() {}
@@ -88,4 +108,22 @@ public class PatientRequest {
     
     public String getEmergencyContactPhone() { return emergencyContactPhone; }
     public void setEmergencyContactPhone(String emergencyContactPhone) { this.emergencyContactPhone = emergencyContactPhone; }
+
+    public String getAssignedClinicianName() { return assignedClinicianName; }
+    public void setAssignedClinicianName(String assignedClinicianName) { this.assignedClinicianName = assignedClinicianName; }
+
+    public String getAssignedClinicianEmail() { return assignedClinicianEmail; }
+    public void setAssignedClinicianEmail(String assignedClinicianEmail) { this.assignedClinicianEmail = assignedClinicianEmail; }
+
+    public String getViewerEmail() { return viewerEmail; }
+    public void setViewerEmail(String viewerEmail) { this.viewerEmail = viewerEmail; }
+
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+
+    public String getWardNumber() { return wardNumber; }
+    public void setWardNumber(String wardNumber) { this.wardNumber = wardNumber; }
+
+    public String getBedNumber() { return bedNumber; }
+    public void setBedNumber(String bedNumber) { this.bedNumber = bedNumber; }
 }

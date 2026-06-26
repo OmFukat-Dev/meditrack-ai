@@ -61,8 +61,7 @@ public interface MedicationRepository extends JpaRepository<Medication, Long> {
     
     // Route-specific queries
     List<Medication> findByRoute(String route);
-    List<Medication> findByPatientIdAndRoute(Long patientId, String route);
-    
+
     // Prescriber queries
     List<Medication> findByPrescribedBy(String prescribedBy);
     List<Medication> findByPatientIdAndPrescribedBy(Long patientId, String prescribedBy);

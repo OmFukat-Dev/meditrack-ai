@@ -52,9 +52,9 @@ public class VitalKafkaConsumer {
     public void consumeVitalReading(
             @Payload String message,
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
-            @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+            @Header(KafkaHeaders.RECEIVED_PARTITION) Integer partition,
             @Header(KafkaHeaders.OFFSET) long offset,
-            @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String key,
+            @Header(KafkaHeaders.RECEIVED_KEY) String key,
             Acknowledgment acknowledgment) {
         
         try {
@@ -71,31 +71,12 @@ public class VitalKafkaConsumer {
                 return;
             }
             
-            // Find patient
-            Optional<Patient> patientOpt = patientRepository.findByPatientIdentifier(vitalMessage.getPatientIdentifier());
-            if (patientOpt.isEmpty()) {
-                logger.warn("Patient not found for identifier: {}", vitalMessage.getPatientIdentifier());
-                acknowledgment.acknowledge();
-                return;
-            }
-            
-            Patient patient = patientOpt.get();
-            
-            // Create vital reading
-            VitalReading vitalReading = convertToVitalReading(vitalMessage, patient);
-            
-            // Save to database
-            vitalReadingRepository.save(vitalReading);
-            
-            // Update Redis cache
-            vitalService.cacheLatestVital(patient.getId(), vitalReading);
-            
-            // Check for alerts
-            vitalService.checkAndTriggerAlerts(patient.getId(), vitalReading);
-            
-            // Log success
+            // Delegate the full ingestion flow to the service layer so validation,
+            // duplicate checks, persistence, alerting, and Kafka publishing stay aligned.
+            VitalReading savedReading = vitalService.processVitalReading(vitalMessage);
+
             logger.info("Successfully processed vital reading: patientId={}, vitalType={}, value={}", 
-                       patient.getId(), vitalReading.getVitalType(), vitalReading.getDisplayValue());
+                       savedReading.getPatient().getId(), savedReading.getVitalType(), savedReading.getDisplayValue());
             
             // Acknowledge message
             acknowledgment.acknowledge();
@@ -120,7 +101,7 @@ public class VitalKafkaConsumer {
     public void consumeVitalBatch(
             @Payload List<String> messages,
             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
-            @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition,
+            @Header(KafkaHeaders.RECEIVED_PARTITION) Integer partition,
             Acknowledgment acknowledgment) {
         
         try {
@@ -139,18 +120,7 @@ public class VitalKafkaConsumer {
                         continue;
                     }
                     
-                    Optional<Patient> patientOpt = patientRepository.findByPatientIdentifier(vitalMessage.getPatientIdentifier());
-                    if (patientOpt.isEmpty()) {
-                        errorCount++;
-                        continue;
-                    }
-                    
-                    Patient patient = patientOpt.get();
-                    VitalReading vitalReading = convertToVitalReading(vitalMessage, patient);
-                    
-                    vitalReadingRepository.save(vitalReading);
-                    vitalService.cacheLatestVital(patient.getId(), vitalReading);
-                    
+                    vitalService.processVitalReading(vitalMessage);
                     successCount++;
                     
                 } catch (Exception e) {
@@ -214,6 +184,21 @@ public class VitalKafkaConsumer {
         
         if (message.getValue() == null) {
             logger.warn("Missing value in vital message");
+            return false;
+        }
+        
+        if (message.getNurseId() == null || message.getNurseId().trim().isEmpty()) {
+            logger.warn("Missing nurse identifier in vital message");
+            return false;
+        }
+        
+        if (message.getDepartment() == null || message.getDepartment().trim().isEmpty()) {
+            logger.warn("Missing department in vital message");
+            return false;
+        }
+        
+        if (message.getNotes() == null || message.getNotes().trim().isEmpty()) {
+            logger.warn("Missing notes in vital message");
             return false;
         }
         

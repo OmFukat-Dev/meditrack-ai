@@ -1,0 +1,72 @@
+groups:
+  - name: meditrack-service-health
+    rules:
+      - alert: MediTrackServiceDown
+        expr: up{job=~"patient-service|vitals-service|ai-prediction-service|alert-service|notification-service|report-service|vital-simulator-service|api-gateway|eureka-server"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "{{ $labels.job }} is down"
+          description: "Prometheus cannot scrape {{ $labels.job }} at {{ $labels.instance }} for more than 2 minutes."
+
+      - alert: MediTrackHighHttp5xxRate
+        expr: |
+          (
+            sum by (job) (
+              rate(http_server_requests_seconds_count{job=~"patient-service|vitals-service|ai-prediction-service|alert-service|notification-service|report-service|vital-simulator-service|api-gateway|eureka-server",status=~"5.."}[5m])
+            )
+            /
+            clamp_min(
+              sum by (job) (
+                rate(http_server_requests_seconds_count{job=~"patient-service|vitals-service|ai-prediction-service|alert-service|notification-service|report-service|vital-simulator-service|api-gateway|eureka-server"}[5m])
+              ),
+              0.001
+            )
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High 5xx error rate on {{ $labels.job }}"
+          description: "More than 5% of HTTP requests on {{ $labels.job }} are failing with 5xx responses."
+
+      - alert: MediTrackHighJvmHeapUsage
+        expr: |
+          (
+            100 * sum by (job) (jvm_memory_used_bytes{job=~"patient-service|vitals-service|ai-prediction-service|alert-service|notification-service|report-service|vital-simulator-service|api-gateway|eureka-server",area="heap"})
+            /
+            clamp_min(sum by (job) (jvm_memory_max_bytes{job=~"patient-service|vitals-service|ai-prediction-service|alert-service|notification-service|report-service|vital-simulator-service|api-gateway|eureka-server",area="heap"}), 1)
+          ) > 85
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High JVM heap usage on {{ $labels.job }}"
+          description: "Heap usage on {{ $labels.job }} has been above 85% for 10 minutes."
+
+      - alert: MediTrackHighCpuUsage
+        expr: avg by (job) (process_cpu_usage{job=~"patient-service|vitals-service|ai-prediction-service|alert-service|notification-service|report-service|vital-simulator-service|api-gateway|eureka-server"}) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High CPU usage on {{ $labels.job }}"
+          description: "CPU usage on {{ $labels.job }} has been above 85% for 10 minutes."
+
+      - alert: MediTrackUnhandledExceptionSpike
+        expr: |
+          sum by (job) (
+            rate(http_server_requests_seconds_count{job=~"patient-service|vitals-service|ai-prediction-service|alert-service|notification-service|report-service|vital-simulator-service|api-gateway|eureka-server",exception!~"^$|None"}[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Unhandled exception spike on {{ $labels.job }}"
+          description: "More than 0.05 requests per second with an exception have been recorded on {{ $labels.job }} over the last 5 minutes."

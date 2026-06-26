@@ -8,9 +8,11 @@ CREATE TABLE vital_readings (
     reading_timestamp TIMESTAMP NOT NULL,
     vital_type VARCHAR(50) NOT NULL, -- HEART_RATE, BLOOD_PRESSURE, TEMPERATURE, SPO2, RESPIRATORY_RATE
     value DECIMAL(10,2) NOT NULL,
-    unit VARCHAR(20) NOT NULL, -- bpm, mmHg, °C, %, breaths/min
+    unit VARCHAR(20) NOT NULL, -- bpm, mmHg, C, %, breaths/min
     systolic DECIMAL(10,2), -- For blood pressure systolic
     diastolic DECIMAL(10,2), -- For blood pressure diastolic
+    nurse_id VARCHAR(100) NOT NULL,
+    department VARCHAR(100) NOT NULL,
     source VARCHAR(50), -- DEVICE, MANUAL, SIMULATOR
     device_id VARCHAR(100),
     location VARCHAR(100), -- ICU, WARD, HOME
@@ -20,7 +22,9 @@ CREATE TABLE vital_readings (
     
     INDEX idx_patient_timestamp (patient_id, reading_timestamp),
     INDEX idx_vital_type_timestamp (vital_type, reading_timestamp),
-    INDEX idx_device_readings (device_id, reading_timestamp)
+    INDEX idx_device_readings (device_id, reading_timestamp),
+    INDEX idx_nurse_timestamp (nurse_id, reading_timestamp),
+    INDEX idx_department_timestamp (department, reading_timestamp)
 );
 
 -- Vital alerts thresholds table

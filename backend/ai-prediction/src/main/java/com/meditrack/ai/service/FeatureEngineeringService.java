@@ -206,8 +206,8 @@ public class FeatureEngineeringService {
         features.setReadingDensity(calculateReadingDensity(readings));
         
         // Circadian features
-        features.setIsNightTime(isNightTime(now));
-        features.setIsWeekend(isWeekend(now));
+        features.setNightTime(isNightTime(now));
+        features.setWeekend(isWeekend(now));
         
         return features;
     }

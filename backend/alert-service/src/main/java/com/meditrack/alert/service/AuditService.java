@@ -1,6 +1,8 @@
 package com.meditrack.alert.service;
 
 import com.meditrack.alert.entity.Alert;
+import com.meditrack.alert.entity.AuditLog;
+import com.meditrack.alert.entity.AuditLog.AuditEventType;
 import com.meditrack.alert.entity.EscalationRule;
 import com.meditrack.alert.entity.Notification;
 import com.meditrack.alert.repository.AuditLogRepository;
@@ -375,23 +377,6 @@ public class AuditService {
     }
     
     // Inner classes
-    public enum AuditEventType {
-        ALERT_CREATED,
-        ALERT_PROCESSED,
-        ALERT_PROCESSING_FAILED,
-        NOTIFICATION_SENT,
-        NOTIFICATION_FAILED,
-        NOTIFICATION_RECALLED,
-        NOTIFICATION_RECALL_FAILED,
-        ESCALATION_EXECUTED,
-        ESCALATION_FAILED,
-        ESCALATION_RECALLED,
-        ESCALATION_RECALL_FAILED,
-        SAGA_COMPLETED,
-        SAGA_FAILED,
-        USER_ACTION
-    }
-    
     public static class AuditEvent {
         private String eventId;
         private AuditEventType eventType;

@@ -3,10 +3,12 @@ package com.meditrack.alert.service;
 import com.meditrack.alert.entity.Notification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnProperty(prefix = "meditrack.alert.legacy-notifications", name = "enabled", havingValue = "true")
 public class SmsNotificationService implements NotificationChannelService {
     
     private static final Logger logger = LoggerFactory.getLogger(SmsNotificationService.class);
@@ -63,9 +65,9 @@ public class SmsNotificationService implements NotificationChannelService {
         StringBuilder message = new StringBuilder();
         
         // Add priority indicator
-        if (notification.getPriority() == NotificationService.NotificationPriority.CRITICAL) {
+        if (notification.getPriority() == Notification.NotificationPriority.CRITICAL) {
             message.append("CRITICAL: ");
-        } else if (notification.getPriority() == NotificationService.NotificationPriority.HIGH) {
+        } else if (notification.getPriority() == Notification.NotificationPriority.HIGH) {
             message.append("HIGH: ");
         }
         

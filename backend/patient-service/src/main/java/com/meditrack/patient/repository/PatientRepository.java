@@ -1,6 +1,7 @@
 package com.meditrack.patient.repository;
 
 import com.meditrack.patient.entity.Patient;
+import com.meditrack.patient.dto.ClinicianSummary;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,13 +31,19 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     @Query("SELECT p FROM Patient p WHERE " +
            "LOWER(p.firstName) LIKE LOWER(CONCAT('%', :name, '%')) OR " +
            "LOWER(p.lastName) LIKE LOWER(CONCAT('%', :name, '%')) OR " +
-           "LOWER(p.patientIdentifier) LIKE LOWER(CONCAT('%', :name, '%'))")
+           "LOWER(p.patientIdentifier) LIKE LOWER(CONCAT('%', :name, '%')) OR " +
+           "LOWER(p.department) LIKE LOWER(CONCAT('%', :name, '%')) OR " +
+           "LOWER(p.wardNumber) LIKE LOWER(CONCAT('%', :name, '%')) OR " +
+           "LOWER(p.bedNumber) LIKE LOWER(CONCAT('%', :name, '%'))")
     Page<Patient> searchByNameOrIdentifier(@Param("name") String name, Pageable pageable);
     
     // Filter operations
     Page<Patient> findByGenderAndIsActive(String gender, Boolean isActive, Pageable pageable);
     Page<Patient> findByBloodTypeAndIsActive(String bloodType, Boolean isActive, Pageable pageable);
     Page<Patient> findByIsActive(Boolean isActive, Pageable pageable);
+    List<Patient> findByIsActive(Boolean isActive);
+    List<Patient> findByDepartmentIgnoreCaseAndIsActive(String department, Boolean isActive);
+    List<Patient> findByViewerEmailIgnoreCaseAndIsActive(String viewerEmail, Boolean isActive);
     
     // Date range operations
     @Query("SELECT p FROM Patient p WHERE p.dateOfBirth BETWEEN :startDate AND :endDate")
@@ -52,6 +59,8 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     
     // Contact information queries
     List<Patient> findByEmailAndIsActive(String email, Boolean isActive);
+    List<Patient> findByEmailIgnoreCaseAndIsActive(String email, Boolean isActive);
+    Optional<Patient> findFirstByEmailIgnoreCaseAndIsActive(String email, Boolean isActive);
     List<Patient> findByPhoneNumberAndIsActive(String phoneNumber, Boolean isActive);
     
     // Emergency contact queries
@@ -74,6 +83,10 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
            "(:lastName IS NULL OR LOWER(p.lastName) LIKE LOWER(CONCAT('%', :lastName, '%'))) AND " +
            "(:gender IS NULL OR p.gender = :gender) AND " +
            "(:bloodType IS NULL OR p.bloodType = :bloodType) AND " +
+           "(:department IS NULL OR LOWER(p.department) LIKE LOWER(CONCAT('%', :department, '%'))) AND " +
+           "(:wardNumber IS NULL OR LOWER(p.wardNumber) LIKE LOWER(CONCAT('%', :wardNumber, '%'))) AND " +
+           "(:bedNumber IS NULL OR LOWER(p.bedNumber) LIKE LOWER(CONCAT('%', :bedNumber, '%'))) AND " +
+           "(:birthDate IS NULL OR p.dateOfBirth = :birthDate) AND " +
            "(:isActive IS NULL OR p.isActive = :isActive) AND " +
            "(:minAge IS NULL OR FUNCTION('YEAR', CURRENT_DATE) - FUNCTION('YEAR', p.dateOfBirth) >= :minAge) AND " +
            "(:maxAge IS NULL OR FUNCTION('YEAR', CURRENT_DATE) - FUNCTION('YEAR', p.dateOfBirth) <= :maxAge)")
@@ -82,6 +95,10 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
         @Param("lastName") String lastName,
         @Param("gender") String gender,
         @Param("bloodType") String bloodType,
+        @Param("department") String department,
+        @Param("wardNumber") String wardNumber,
+        @Param("bedNumber") String bedNumber,
+        @Param("birthDate") LocalDate birthDate,
         @Param("isActive") Boolean isActive,
         @Param("minAge") Integer minAge,
         @Param("maxAge") Integer maxAge,
@@ -91,4 +108,14 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     // FHIR related queries
     @Query("SELECT DISTINCT p FROM Patient p JOIN p.fhirResources f WHERE f.resourceType = :resourceType")
     List<Patient> findByFhirResourceType(@Param("resourceType") String resourceType);
+
+    @Query("SELECT new com.meditrack.patient.dto.ClinicianSummary(" +
+           "COALESCE(p.assignedClinicianName, p.assignedClinicianEmail), " +
+           "p.assignedClinicianEmail, " +
+           "COUNT(p)) " +
+           "FROM Patient p " +
+           "WHERE p.isActive = true AND p.assignedClinicianEmail IS NOT NULL AND p.assignedClinicianEmail <> '' " +
+           "GROUP BY p.assignedClinicianName, p.assignedClinicianEmail " +
+           "ORDER BY COALESCE(p.assignedClinicianName, p.assignedClinicianEmail)")
+    List<ClinicianSummary> findClinicianSummaries();
 }

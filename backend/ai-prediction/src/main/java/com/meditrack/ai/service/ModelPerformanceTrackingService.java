@@ -130,7 +130,19 @@ public class ModelPerformanceTrackingService {
                 .collect(Collectors.toList());
             
             if (filteredRecords.isEmpty()) {
-                return new ModelPerformanceSummary(modelName, startTime, endTime, 0, 0.0, 0.0, 0.0, 0.0);
+                return new ModelPerformanceSummary(
+                    modelName,
+                    startTime,
+                    endTime,
+                    0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    new HashMap<>(),
+                    new HashMap<>()
+                );
             }
             
             // Calculate metrics
@@ -267,40 +279,42 @@ public class ModelPerformanceTrackingService {
     private Map<String, ClassMetrics> calculateClassMetrics(List<PredictionRecord> records) {
         Map<String, ClassMetrics> classMetrics = new HashMap<>();
         
-        // Group by actual class
-        Map<String, List<PredictionRecord>> byActualClass = records.stream()
-            .collect(Collectors.groupingBy(PredictionRecord::getActualClass));
-        
-        for (Map.Entry<String, List<PredictionRecord>> entry : byActualClass.entrySet()) {
-            String className = entry.getKey();
-            List<PredictionRecord> classRecords = entry.getValue();
-            
-            // Calculate TP, FP, FN, TN
-            long totalActual = classRecords.size();
-            long truePositives = classRecords.stream()
-                .mapToLong(r -> r.getPredictedClass().equals(className) ? 1 : 0)
-                .sum();
-            
-            // Calculate false positives for this class
-            long falsePositives = records.stream()
-                .filter(r -> r.getPredictedClass().equals(className) && 
-                           !r.getActualClass().equals(className))
+        Set<String> allClasses = new LinkedHashSet<>();
+        for (PredictionRecord record : records) {
+            if (record.getActualClass() != null) {
+                allClasses.add(record.getActualClass());
+            }
+            if (record.getPredictedClass() != null) {
+                allClasses.add(record.getPredictedClass());
+            }
+        }
+
+        for (String className : allClasses) {
+            long support = records.stream()
+                .filter(r -> className.equals(r.getActualClass()))
                 .count();
-            
-            // Calculate false negatives for this class
-            long falseNegatives = classRecords.stream()
-                .mapToLong(r -> !r.getPredictedClass().equals(className) ? 1 : 0)
-                .sum();
-            
-            double precision = (truePositives + falsePositives) > 0 ? 
+
+            long truePositives = records.stream()
+                .filter(r -> className.equals(r.getActualClass()) && className.equals(r.getPredictedClass()))
+                .count();
+
+            long falsePositives = records.stream()
+                .filter(r -> className.equals(r.getPredictedClass()) && !className.equals(r.getActualClass()))
+                .count();
+
+            long falseNegatives = records.stream()
+                .filter(r -> className.equals(r.getActualClass()) && !className.equals(r.getPredictedClass()))
+                .count();
+
+            double precision = (truePositives + falsePositives) > 0 ?
                 (double) truePositives / (truePositives + falsePositives) : 0.0;
-            double recall = (truePositives + falseNegatives) > 0 ? 
+            double recall = (truePositives + falseNegatives) > 0 ?
                 (double) truePositives / (truePositives + falseNegatives) : 0.0;
-            double f1Score = (precision + recall) > 0 ? 
+            double f1Score = (precision + recall) > 0 ?
                 2 * (precision * recall) / (precision + recall) : 0.0;
-            
+
             classMetrics.put(className, new ClassMetrics(
-                className, totalActual, truePositives, falsePositives, falseNegatives, precision, recall, f1Score
+                className, support, truePositives, falsePositives, falseNegatives, precision, recall, f1Score
             ));
         }
         

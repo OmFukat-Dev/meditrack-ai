@@ -3,6 +3,17 @@
 ## Project Overview
 MediTrack AI is a healthcare monitoring system with predictive alerts using microservices architecture, AI/ML models, and real-time vital monitoring.
 
+## Current Status
+- Phase 1 foundation work is present, and the local bootstrap now creates the service databases and core Kafka topics explicitly.
+- Backend service structure is present for the core microservices, AI prediction, alerting, notification, gateway, and infrastructure modules.
+- Phase 4.2 notification-service is implemented in code with email, SMS, push, webhook, template handling, Kafka ingestion, retry scheduling, and an alert-service facade that delegates into it.
+- Phase 4.2 now also has focused unit tests for template rendering, notification dispatch/recall, webhook simulation, and the alert-service notification facade.
+- Frontend dashboard work has started in code with a React 18 + Redux Toolkit + MUI foundation, a role-aware auth/session gate, websocket refresh wiring, and the phase 5.2 dashboard screens.
+- Full Maven reactor verification now passes locally.
+- Phase 6.1 is on hold for the later coverage-expansion pass.
+- Phase 6.2 is complete with paged FHIR reads, FHIR resource indexing, Kafka batching throughput coverage, and CPU/memory profiling support.
+- JaCoCo reports are generated across the backend modules, but the aggregate 80% coverage target still needs a larger test-expansion pass.
+
 ## Tech Stack Analysis - Free vs Paid
 
 ### ✅ COMPLETELY FREE TECHNOLOGIES
@@ -94,49 +105,54 @@ MediTrack AI is a healthcare monitoring system with predictive alerts using micr
 - [x] Compliance audit logging
 
 #### Sub-phase 4.2: Notification Service
-- [ ] Email notifications
-- [ ] SMS integration (using free SMS APIs)
-- [ ] Push notification system
-- [ ] Notification templates
+- [x] Email notifications
+- [x] SMS integration (using free SMS APIs)
+- [x] Push notification system
+- [x] Notification templates
+- [x] Unit tests for senders, scheduler, templates, and alert-service facade
 
-### 📊 PHASE 5: FRONTEND DASHBOARD (Week 11-12)
+### PHASE 5: FRONTEND DASHBOARD (Week 11-12)
 #### Sub-phase 5.1: React Application Setup
-- [ ] React 18 + Redux Toolkit setup
-- [ ] Material UI integration
-- [ ] Authentication and authorization
-- [ ] Real-time WebSocket connections
+- [x] React 18 + Redux Toolkit setup
+- [x] Material UI integration
+- [x] Authentication and authorization
+- [x] Real-time WebSocket connections
 
 #### Sub-phase 5.2: Dashboard Features
-- [ ] Patient vital monitoring
-- [ ] Real-time alerts display
-- [ ] Historical data visualization (Recharts)
-- [ ] Report generation
+- [x] Patient vital monitoring
+- [x] Real-time alerts display
+- [x] Historical data visualization (Recharts)
+- [x] Report generation
 
 ### 🧪 PHASE 6: TESTING & QUALITY ASSURANCE (Week 13-14)
 #### Sub-phase 6.1: Unit & Integration Testing
-- [ ] JUnit 5 + Mockito tests for all services
-- [ ] Testcontainers integration testing
-- [ ] REST Assured API testing
+- [x] JUnit 5 + Mockito tests for all services
+- [x] Testcontainers integration testing
+- [x] REST Assured API testing
 - [ ] JaCoCo coverage reporting (80%+ target)
+- Status: the full Maven reactor now passes, with service-level coverage, integration, and API tests in place across the backend; Phase 6.1 is on hold until the later coverage-expansion pass.
 
 #### Sub-phase 6.2: Performance & Load Testing
-- [ ] Kafka throughput testing
-- [ ] Database performance optimization
-- [ ] API response time optimization
-- [ ] Memory and CPU profiling
+- [x] Kafka throughput testing
+- [x] Database performance optimization
+- [x] API response time optimization
+- [x] Memory and CPU profiling
+- Status: Phase 6.2 is complete. The profiling script captures JFR, heap, and class histogram artifacts for the hot read paths.
 
 ### 📈 PHASE 7: MONITORING & OBSERVABILITY (Week 15)
 #### Sub-phase 7.1: Monitoring Stack
-- [ ] Prometheus metrics collection
-- [ ] Grafana dashboard setup
-- [ ] Custom health checks
-- [ ] Alert rule configuration
+- [x] Prometheus metrics collection
+- [x] Grafana dashboard setup
+- [x] Custom health checks
+- [x] Alert rule configuration
+- Status: Phase 7.1 is complete. Prometheus scrapes the services, Grafana provisions the overview dashboard, and the custom health indicators plus alert rules are in place.
 
 #### Sub-phase 7.2: Logging & Tracing
-- [ ] Structured logging implementation
-- [ ] Zipkin distributed tracing
-- [ ] Centralized log aggregation
-- [ ] Error tracking and alerting
+- [x] Structured logging implementation
+- [x] Zipkin distributed tracing
+- [x] Centralized log aggregation
+- [x] Error tracking and alerting
+- Status: Phase 7.2 is complete. Services emit trace-aware structured logs, traces export to Zipkin, Loki and Promtail aggregate log files, and Prometheus includes exception-spike alerting.
 
 ## Daily Commit Strategy
 - End of each day: Commit completed work with descriptive messages
@@ -157,3 +173,15 @@ MediTrack AI is a healthcare monitoring system with predictive alerts using micr
 - **Integration**: Test microservice integration early and often
 - **Performance**: Monitor and optimize at each phase
 - **Security**: Implement security from the beginning, not as an afterthought
+
+## Local Run Commands
+- `run-project.bat` - opens Docker infrastructure, backend services, and the frontend dev server in separate windows.
+- `run-docker.bat` - starts the Docker infrastructure and observability stack.
+- `run-backend.bat` - builds the backend and starts the Java services. Use `--skip-docker` when Docker is already being launched separately.
+- `run-frontend.bat` - starts the React/Vite frontend dev server.
+- `powershell -ExecutionPolicy Bypass -File .\scripts\build-all.ps1` - build all backend services manually.
+- `powershell -ExecutionPolicy Bypass -File .\scripts\start-services.ps1 -Mode DockerOnly` - start the Docker infrastructure manually.
+- `powershell -ExecutionPolicy Bypass -File .\scripts\start-services.ps1 -Mode BackendOnly` - start the Java services manually after the Docker stack is already running.
+- `powershell -ExecutionPolicy Bypass -File .\scripts\start-services.ps1` - start the full backend and observability stack manually.
+- `powershell -ExecutionPolicy Bypass -File .\scripts\stop-services.ps1` - stop the backend and Docker stack manually.
+- `cd frontend && npm install && npm run dev` - start the frontend manually without the batch launcher.

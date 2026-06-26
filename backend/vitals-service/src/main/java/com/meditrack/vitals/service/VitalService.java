@@ -1,5 +1,7 @@
 package com.meditrack.vitals.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.meditrack.vitals.dto.VitalReadingEvent;
 import com.meditrack.vitals.dto.VitalReadingMessage;
 import com.meditrack.vitals.entity.Patient;
 import com.meditrack.vitals.entity.VitalReading;
@@ -12,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -21,8 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -44,6 +50,9 @@ public class VitalService {
     
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
+    
+    @Autowired
+    private ObjectMapper objectMapper;
     
     // Main vital processing methods
     @Counted(value = "vital.processed", description = "Number of vitals processed")
@@ -254,7 +263,9 @@ public class VitalService {
                 alertMessage, 
                 "MEDIUM",
                 vitalReading.getVitalType(),
-                vitalReading.getReadingTimestamp()
+                vitalReading.getReadingTimestamp(),
+                vitalReading.getNurseId(),
+                vitalReading.getDepartment()
             );
             
             publishAlert(alert);
@@ -276,7 +287,9 @@ public class VitalService {
                 alertMessage, 
                 "CRITICAL",
                 vitalReading.getVitalType(),
-                vitalReading.getReadingTimestamp()
+                vitalReading.getReadingTimestamp(),
+                vitalReading.getNurseId(),
+                vitalReading.getDepartment()
             );
             
             publishAlert(alert);
@@ -298,7 +311,9 @@ public class VitalService {
                 alertMessage, 
                 "HIGH",
                 current.getVitalType(),
-                current.getReadingTimestamp()
+                current.getReadingTimestamp(),
+                current.getNurseId(),
+                current.getDepartment()
             );
             
             publishAlert(alert);
@@ -321,7 +336,9 @@ public class VitalService {
                 alertMessage, 
                 "MEDIUM",
                 vitalReading.getVitalType(),
-                vitalReading.getReadingTimestamp()
+                vitalReading.getReadingTimestamp(),
+                vitalReading.getNurseId(),
+                vitalReading.getDepartment()
             );
             
             publishAlert(alert);
@@ -333,16 +350,38 @@ public class VitalService {
     }
     
     // Kafka publishing methods
+    private ObjectMapper getObjectMapper() {
+        if (objectMapper == null) {
+            objectMapper = new ObjectMapper();
+            objectMapper.findAndRegisterModules();
+        }
+        return objectMapper;
+    }
+
     private void publishVitalEvent(VitalReading vitalReading) {
         try {
-            String event = String.format("{\"patientId\":%d,\"vitalType\":\"%s\",\"value\":%s,\"timestamp\":\"%s\"}", 
-                vitalReading.getPatient().getId(), 
-                vitalReading.getVitalType(), 
-                vitalReading.getValue(), 
-                vitalReading.getReadingTimestamp());
-            
-            kafkaTemplate.send("vital-events", event);
-            logger.debug("Published vital event: {}", event);
+            VitalReadingEvent event = new VitalReadingEvent();
+            event.setEventId(java.util.UUID.randomUUID().toString());
+            event.setEventType("VITAL_RECORDED");
+            event.setTimestamp(vitalReading.getReadingTimestamp());
+            event.setPatientId(String.valueOf(vitalReading.getPatient().getId()));
+            event.setVitalType(vitalReading.getVitalType());
+            event.setValue(vitalReading.getValue());
+            event.setUnit(vitalReading.getUnit());
+            event.setSystolic(vitalReading.getSystolic() != null ? vitalReading.getSystolic().toPlainString() : null);
+            event.setDiastolic(vitalReading.getDiastolic() != null ? vitalReading.getDiastolic().toPlainString() : null);
+            event.setNurseId(vitalReading.getNurseId());
+            event.setDepartment(vitalReading.getDepartment());
+            event.setCreatedBy(vitalReading.getNurseId());
+            event.setRole("NURSE");
+            event.setMessage(vitalReading.getNotes());
+            event.setSeverity(vitalReading.getVitalStatus());
+            event.setRiskLevel(vitalReading.getVitalStatus());
+
+            String eventJson = getObjectMapper().writeValueAsString(event);
+            kafkaTemplate.send("patient-vitals", event.getPatientId(), eventJson);
+            kafkaTemplate.send("vital-events", eventJson);
+            logger.debug("Published vital event: {}", eventJson);
         } catch (Exception e) {
             logger.error("Error publishing vital event: {}", e.getMessage(), e);
         }
@@ -350,14 +389,19 @@ public class VitalService {
     
     private void publishAlert(AlertMessage alert) {
         try {
-            String alertJson = String.format("{\"patientId\":%d,\"alertType\":\"%s\",\"message\":\"%s\",\"severity\":\"%s\",\"vitalType\":\"%s\",\"timestamp\":\"%s\"}", 
-                alert.getPatientId(), 
-                alert.getAlertType(), 
-                alert.getMessage(), 
-                alert.getSeverity(), 
-                alert.getVitalType(), 
-                alert.getTimestamp());
-            
+            VitalReadingEvent alertEvent = new VitalReadingEvent();
+            alertEvent.setEventId(java.util.UUID.randomUUID().toString());
+            alertEvent.setEventType("ALERT_GENERATED");
+            alertEvent.setTimestamp(alert.getTimestamp());
+            alertEvent.setPatientId(String.valueOf(alert.getPatientId()));
+            alertEvent.setVitalType(alert.getVitalType());
+            alertEvent.setSeverity(alert.getSeverity());
+            alertEvent.setMessage(alert.getMessage());
+            alertEvent.setNurseId(alert.getNurseId());
+            alertEvent.setDepartment(alert.getDepartment());
+
+            String alertJson = getObjectMapper().writeValueAsString(alertEvent);
+            kafkaTemplate.send("patient-alerts", String.valueOf(alert.getPatientId()), alertJson);
             kafkaTemplate.send("vital-alerts", alertJson);
             logger.debug("Published alert: {}", alertJson);
         } catch (Exception e) {
@@ -379,6 +423,8 @@ public class VitalService {
         vitalReading.setLocation(message.getLocation());
         vitalReading.setQualityScore(message.getQualityScore());
         vitalReading.setNotes(message.getNotes());
+        vitalReading.setNurseId(message.getNurseId());
+        vitalReading.setDepartment(message.getDepartment());
         
         // Handle blood pressure
         if ("BLOOD_PRESSURE".equals(message.getVitalType())) {
@@ -401,8 +447,12 @@ public class VitalService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "readingTimestamp"));
         
         if (startTime != null && endTime != null) {
-            return vitalReadingRepository.findByPatientIdAndVitalTypeAndTimeRange(
-                patientId, vitalType, startTime, endTime, pageable);
+            List<VitalReading> readings = vitalType != null
+                ? vitalReadingRepository.findByPatientIdAndVitalTypeAndTimeRange(patientId, vitalType, startTime, endTime)
+                : vitalReadingRepository.findByPatientIdAndTimeRange(patientId, startTime, endTime);
+            readings.sort(Comparator.comparing(VitalReading::getReadingTimestamp,
+                Comparator.nullsLast(Comparator.naturalOrder())).reversed());
+            return toPage(readings, pageable);
         } else if (vitalType != null) {
             return vitalReadingRepository.findByPatientIdAndVitalType(patientId, vitalType, pageable);
         } else {
@@ -411,7 +461,7 @@ public class VitalService {
     }
     
     public List<VitalReading> getLatestVitals(Long patientId) {
-        List<VitalReading> latestVitals = List.of();
+        List<VitalReading> latestVitals = new ArrayList<>();
         
         String[] vitalTypes = {"HEART_RATE", "BLOOD_PRESSURE", "TEMPERATURE", "SPO2", "RESPIRATORY_RATE"};
         
@@ -437,6 +487,24 @@ public class VitalService {
     
     public List<VitalReading> getCriticalReadings(Long patientId, LocalDateTime since) {
         return vitalReadingRepository.findCriticalReadingsByPatientId(patientId, since);
+    }
+
+    public boolean isHealthy() {
+        return redisCacheService.isHealthy();
+    }
+
+    public Map<String, Object> getCacheStats() {
+        return redisCacheService.getCacheStats();
+    }
+
+    private Page<VitalReading> toPage(List<VitalReading> readings, Pageable pageable) {
+        int start = (int) pageable.getOffset();
+        if (start >= readings.size()) {
+            return Page.empty(pageable);
+        }
+
+        int end = Math.min(start + pageable.getPageSize(), readings.size());
+        return new PageImpl<>(readings.subList(start, end), pageable, readings.size());
     }
     
     // Inner classes
@@ -499,15 +567,20 @@ public class VitalService {
         private String severity;
         private String vitalType;
         private LocalDateTime timestamp;
+        private String nurseId;
+        private String department;
         
         public AlertMessage(Long patientId, String alertType, String message, 
-                         String severity, String vitalType, LocalDateTime timestamp) {
+                         String severity, String vitalType, LocalDateTime timestamp,
+                         String nurseId, String department) {
             this.patientId = patientId;
             this.alertType = alertType;
             this.message = message;
             this.severity = severity;
             this.vitalType = vitalType;
             this.timestamp = timestamp;
+            this.nurseId = nurseId;
+            this.department = department;
         }
         
         // Getters
@@ -517,6 +590,8 @@ public class VitalService {
         public String getSeverity() { return severity; }
         public String getVitalType() { return vitalType; }
         public LocalDateTime getTimestamp() { return timestamp; }
+        public String getNurseId() { return nurseId; }
+        public String getDepartment() { return department; }
     }
     
     // Process threshold updates

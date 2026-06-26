@@ -29,6 +29,9 @@ public class Patient {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
     
+    @Column(name = "department", length = 100)
+    private String department;
+    
     // Constructors
     public Patient() {}
     
@@ -62,6 +65,9 @@ public class Patient {
     
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+    
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
     
     // Utility methods
     @Override

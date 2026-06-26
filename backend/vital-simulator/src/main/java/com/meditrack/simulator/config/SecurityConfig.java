@@ -32,7 +32,7 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2
-                .jwt(jwt -> jwt.jwtDecoder(jwtDecoder()))
+                .jwt(jwt -> jwt.decoder(jwtDecoder()))
             );
         
         return http.build();
@@ -45,7 +45,7 @@ public class SecurityConfig {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
             "http://localhost:3000",  // React frontend
-            "http://localhost:8080",  // API Gateway
+            "http://localhost:8090",  // API Gateway
             "http://localhost:8083",  // Vital Simulator Service
             "https://yourdomain.com"   // Production domain
         ));

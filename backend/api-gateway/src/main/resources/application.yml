@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8090
 
 spring:
   application:
@@ -11,19 +11,22 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
+        # User Service Routes (Authentication)
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/auth/**,/api/users/**
+          filters:
+            - CircuitBreaker=fallbackUserService
+        
         # Patient Service Routes
         - id: patient-service
           uri: lb://patient-service
           predicates:
-            - Path=/api/patients/**,/api/patient/**
+            - Path=/api/patients/**,/api/patient/**,/api/clinicians/**,/api/staff-members/**
           filters:
-            - StripPrefix=1
+            - JwtAuthenticationFilter
             - CircuitBreaker=fallbackPatientService
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                key-resolver: "#{@userKeyResolver}"
         
         # Vitals Service Routes
         - id: vitals-service
@@ -31,13 +34,8 @@ spring:
           predicates:
             - Path=/api/vitals/**,/api/vital/**
           filters:
-            - StripPrefix=1
+            - JwtAuthenticationFilter
             - CircuitBreaker=fallbackVitalsService
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 50
-                redis-rate-limiter.burstCapacity: 100
-                key-resolver: "#{@userKeyResolver}"
         
         # AI Prediction Service Routes
         - id: ai-prediction-service
@@ -45,27 +43,17 @@ spring:
           predicates:
             - Path=/api/predictions/**,/api/prediction/**
           filters:
-            - StripPrefix=1
+            - JwtAuthenticationFilter
             - CircuitBreaker=fallbackAIPredictionService
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 20
-                redis-rate-limiter.burstCapacity: 40
-                key-resolver: "#{@userKeyResolver}"
         
         # Alert Service Routes
         - id: alert-service
           uri: lb://alert-service
           predicates:
-            - Path=/api/alerts/**,/api/alert/**
+            - Path=/api/alerts/**,/api/alert/**,/api/alert-service/**
           filters:
-            - StripPrefix=1
+            - JwtAuthenticationFilter
             - CircuitBreaker=fallbackAlertService
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 30
-                redis-rate-limiter.burstCapacity: 60
-                key-resolver: "#{@userKeyResolver}"
         
         # Notification Service Routes
         - id: notification-service
@@ -73,13 +61,8 @@ spring:
           predicates:
             - Path=/api/notifications/**,/api/notification/**
           filters:
-            - StripPrefix=1
+            - JwtAuthenticationFilter
             - CircuitBreaker=fallbackNotificationService
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 15
-                redis-rate-limiter.burstCapacity: 30
-                key-resolver: "#{@userKeyResolver}"
         
         # Report Service Routes
         - id: report-service
@@ -87,19 +70,14 @@ spring:
           predicates:
             - Path=/api/reports/**,/api/report/**
           filters:
-            - StripPrefix=1
+            - JwtAuthenticationFilter
             - CircuitBreaker=fallbackReportService
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 5
-                redis-rate-limiter.burstCapacity: 10
-                key-resolver: "#{@userKeyResolver}"
       
       # Global CORS Configuration
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOriginPatterns: "*"
+            allowedOriginPatterns: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
             allowedMethods:
               - GET
               - POST
@@ -121,6 +99,19 @@ spring:
         max-idle: 8
         min-idle: 0
 
+meditrack:
+  security:
+    auth:
+      enabled: true
+    jwt:
+      secret: ${JWT_SECRET:meditrack-ai-gateway-signing-key-2026-local-development}
+      expiration-ms: 86400000
+    service-jwt:
+      secret: ${SERVICE_JWT_SECRET:meditrack-ai-service-signing-key-2026-local-development}
+      expiration-ms: 3600000
+  services:
+    patient-base-url: http://localhost:8082
+
 # Eureka Client Configuration
 eureka:
   instance:
@@ -129,7 +120,7 @@ eureka:
     lease-expiration-duration-in-seconds: 90
   client:
     service-url:
-      defaultZone: http://admin:admin123@localhost:8761/eureka/
+      defaultZone: ${EUREKA_URL:http://admin:admin123@localhost:8761/eureka/}
     register-with-eureka: true
     fetch-registry: true
     registry-fetch-interval-seconds: 30
@@ -138,6 +129,14 @@ eureka:
 resilience4j:
   circuitbreaker:
     instances:
+      fallbackUserService:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 30s
+        failure-rate-threshold: 50
       fallbackPatientService:
         register-health-indicator: true
         sliding-window-size: 10
@@ -198,6 +197,12 @@ management:
       show-details: always
     gateway:
       enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://zipkin:9411/api/v2/spans
   metrics:
     export:
       prometheus:
@@ -212,5 +217,11 @@ logging:
     org.springframework.cloud.gateway: DEBUG
     org.springframework.web.reactive.function.client: DEBUG
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "ts=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=${spring.application.name} traceId=%X{traceId:-} spanId=%X{spanId:-} logger=%logger{36} thread=%thread msg=%msg%n"
+    file: "ts=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=${spring.application.name} traceId=%X{traceId:-} spanId=%X{spanId:-} logger=%logger{36} thread=%thread msg=%msg%n"
+  file:
+    name: logs/${spring.application.name}.log
+  logback:
+    rollingpolicy:
+      max-file-size: 25MB
+      max-history: 14

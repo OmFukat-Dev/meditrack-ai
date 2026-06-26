@@ -1,0 +1,341 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc">
+  <title id="title">MediTrack AI Frontend and Backend Connection Diagram</title>
+  <desc id="desc">A flow diagram that shows how the React frontend talks to the API gateway, how the gateway routes requests to backend services, and how the services connect to shared infrastructure such as MySQL, Redis, Kafka, Eureka, and observability tools.</desc>
+
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#07111f" />
+      <stop offset="55%" stop-color="#0b1430" />
+      <stop offset="100%" stop-color="#1a1140" />
+    </linearGradient>
+
+    <linearGradient id="accentBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0ea5e9" />
+    </linearGradient>
+
+    <linearGradient id="accentGreen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4ade80" />
+      <stop offset="100%" stop-color="#14b8a6" />
+    </linearGradient>
+
+    <linearGradient id="accentPurple" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a78bfa" />
+      <stop offset="100%" stop-color="#ec4899" />
+    </linearGradient>
+
+    <linearGradient id="accentOrange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f97316" />
+    </linearGradient>
+
+    <linearGradient id="chipGradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1f2937" />
+      <stop offset="100%" stop-color="#111827" />
+    </linearGradient>
+
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1" />
+    </pattern>
+
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000000" flood-opacity="0.35" />
+    </filter>
+
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#cbd5e1" />
+    </marker>
+
+    <marker id="arrowBlue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#38bdf8" />
+    </marker>
+
+    <style>
+      .title { font: 700 34px Inter, Segoe UI, Arial, sans-serif; fill: #ffffff; }
+      .subtitle { font: 400 15px Inter, Segoe UI, Arial, sans-serif; fill: #cbd5e1; }
+      .section { font: 700 20px Inter, Segoe UI, Arial, sans-serif; fill: #ffffff; }
+      .cardTitle { font: 700 16px Inter, Segoe UI, Arial, sans-serif; fill: #ffffff; }
+      .cardBody { font: 400 13px Inter, Segoe UI, Arial, sans-serif; fill: #cbd5e1; }
+      .tiny { font: 500 12px Inter, Segoe UI, Arial, sans-serif; fill: #94a3b8; letter-spacing: 0.02em; }
+      .chip { font: 600 12px Inter, Segoe UI, Arial, sans-serif; fill: #e5e7eb; }
+      .flowNum { font: 700 14px Inter, Segoe UI, Arial, sans-serif; fill: #ffffff; }
+      .flowText { font: 600 13px Inter, Segoe UI, Arial, sans-serif; fill: #e2e8f0; }
+      .footer { font: 500 12px Inter, Segoe UI, Arial, sans-serif; fill: #94a3b8; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1100" fill="url(#bg)" />
+  <rect width="1600" height="1100" fill="url(#grid)" opacity="0.9" />
+  <rect x="0" y="0" width="1600" height="1100" fill="url(#bg)" opacity="0.18" />
+
+  <circle cx="1380" cy="120" r="190" fill="#8b5cf6" opacity="0.12" />
+  <circle cx="180" cy="930" r="240" fill="#38bdf8" opacity="0.10" />
+  <circle cx="1460" cy="900" r="240" fill="#f97316" opacity="0.08" />
+
+  <text x="60" y="62" class="title">MediTrack AI Frontend and Backend Connection</text>
+  <text x="60" y="90" class="subtitle">
+    React dashboards call the shared API client, requests pass through the gateway, and microservices handle data, events, and live updates.
+  </text>
+
+  <g filter="url(#shadow)">
+    <rect x="1160" y="28" rx="18" ry="18" width="380" height="52" fill="url(#chipGradient)" stroke="#ffffff" stroke-opacity="0.08" />
+    <text x="1200" y="60" class="chip">Frontend -&gt; Gateway -&gt; Services -&gt; Data -&gt; Live Updates</text>
+  </g>
+
+  <!-- Request flow -->
+  <g filter="url(#shadow)">
+    <rect x="60" y="125" rx="24" ry="24" width="220" height="76" fill="#0f172a" fill-opacity="0.82" stroke="#38bdf8" stroke-opacity="0.26" />
+    <rect x="60" y="125" rx="24" ry="24" width="8" height="76" fill="url(#accentBlue)" />
+    <circle cx="92" cy="163" r="16" fill="#0ea5e9" />
+    <text x="92" y="168" text-anchor="middle" class="flowNum">1</text>
+    <text x="118" y="156" class="flowText">User opens</text>
+    <text x="118" y="174" class="flowText">a dashboard or login</text>
+  </g>
+
+  <line x1="280" y1="163" x2="302" y2="163" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrowBlue)" />
+
+  <g filter="url(#shadow)">
+    <rect x="302" y="125" rx="24" ry="24" width="220" height="76" fill="#0f172a" fill-opacity="0.82" stroke="#38bdf8" stroke-opacity="0.26" />
+    <rect x="302" y="125" rx="24" ry="24" width="8" height="76" fill="url(#accentBlue)" />
+    <circle cx="334" cy="163" r="16" fill="#0ea5e9" />
+    <text x="334" y="168" text-anchor="middle" class="flowNum">2</text>
+    <text x="360" y="156" class="flowText">React page calls</text>
+    <text x="360" y="174" class="flowText">`src/services/api.ts`</text>
+  </g>
+
+  <line x1="522" y1="163" x2="544" y2="163" stroke="#38bdf8" stroke-width="3" marker-end="url(#arrowBlue)" />
+
+  <g filter="url(#shadow)">
+    <rect x="544" y="125" rx="24" ry="24" width="220" height="76" fill="#0f172a" fill-opacity="0.82" stroke="#4ade80" stroke-opacity="0.26" />
+    <rect x="544" y="125" rx="24" ry="24" width="8" height="76" fill="url(#accentGreen)" />
+    <circle cx="576" cy="163" r="16" fill="#22c55e" />
+    <text x="576" y="168" text-anchor="middle" class="flowNum">3</text>
+    <text x="602" y="156" class="flowText">API Gateway</text>
+    <text x="602" y="174" class="flowText">checks auth and routes</text>
+  </g>
+
+  <line x1="764" y1="163" x2="786" y2="163" stroke="#4ade80" stroke-width="3" marker-end="url(#arrowBlue)" />
+
+  <g filter="url(#shadow)">
+    <rect x="786" y="125" rx="24" ry="24" width="240" height="76" fill="#0f172a" fill-opacity="0.82" stroke="#a78bfa" stroke-opacity="0.26" />
+    <rect x="786" y="125" rx="24" ry="24" width="8" height="76" fill="url(#accentPurple)" />
+    <circle cx="818" cy="163" r="16" fill="#8b5cf6" />
+    <text x="818" y="168" text-anchor="middle" class="flowNum">4</text>
+    <text x="844" y="156" class="flowText">Microservice</text>
+    <text x="844" y="174" class="flowText">handles business logic</text>
+  </g>
+
+  <line x1="1026" y1="163" x2="1048" y2="163" stroke="#a78bfa" stroke-width="3" marker-end="url(#arrowBlue)" />
+
+  <g filter="url(#shadow)">
+    <rect x="1048" y="125" rx="24" ry="24" width="250" height="76" fill="#0f172a" fill-opacity="0.82" stroke="#fbbf24" stroke-opacity="0.26" />
+    <rect x="1048" y="125" rx="24" ry="24" width="8" height="76" fill="url(#accentOrange)" />
+    <circle cx="1080" cy="163" r="16" fill="#f59e0b" />
+    <text x="1080" y="168" text-anchor="middle" class="flowNum">5</text>
+    <text x="1106" y="156" class="flowText">Data + events</text>
+    <text x="1106" y="174" class="flowText">MySQL, Redis, Kafka</text>
+  </g>
+
+  <line x1="1298" y1="163" x2="1320" y2="163" stroke="#fbbf24" stroke-width="3" marker-end="url(#arrowBlue)" />
+
+  <g filter="url(#shadow)">
+    <rect x="1320" y="125" rx="24" ry="24" width="220" height="76" fill="#0f172a" fill-opacity="0.82" stroke="#ec4899" stroke-opacity="0.26" />
+    <rect x="1320" y="125" rx="24" ry="24" width="8" height="76" fill="url(#accentPurple)" />
+    <circle cx="1352" cy="163" r="16" fill="#ec4899" />
+    <text x="1352" y="168" text-anchor="middle" class="flowNum">6</text>
+    <text x="1378" y="156" class="flowText">Response and live</text>
+    <text x="1378" y="174" class="flowText">updates return to UI</text>
+  </g>
+
+  <!-- Panels -->
+  <g filter="url(#shadow)">
+    <rect x="60" y="245" rx="28" ry="28" width="360" height="430" fill="#0f172a" fill-opacity="0.82" stroke="#ffffff" stroke-opacity="0.08" />
+    <rect x="60" y="245" rx="28" ry="28" width="360" height="64" fill="#0b1222" fill-opacity="0.92" />
+    <rect x="60" y="245" rx="28" ry="28" width="12" height="430" fill="url(#accentBlue)" />
+    <text x="88" y="282" class="section">Frontend Layer</text>
+    <text x="88" y="307" class="tiny">React pages + shared API client</text>
+
+    <g>
+      <rect x="84" y="330" rx="18" ry="18" width="312" height="74" fill="#111827" fill-opacity="0.88" stroke="#38bdf8" stroke-opacity="0.16" />
+      <circle cx="112" cy="367" r="14" fill="#38bdf8" fill-opacity="0.18" stroke="#38bdf8" stroke-opacity="0.4" />
+      <text x="112" y="372" text-anchor="middle" class="flowNum" fill="#38bdf8">S</text>
+      <text x="138" y="358" class="cardTitle">Sign In</text>
+      <text x="138" y="377" class="cardBody">Role-based login and session setup</text>
+    </g>
+
+    <g>
+      <rect x="84" y="416" rx="18" ry="18" width="312" height="74" fill="#111827" fill-opacity="0.88" stroke="#38bdf8" stroke-opacity="0.16" />
+      <circle cx="112" cy="453" r="14" fill="#38bdf8" fill-opacity="0.18" stroke="#38bdf8" stroke-opacity="0.4" />
+      <text x="112" y="458" text-anchor="middle" class="flowNum" fill="#38bdf8">D</text>
+      <text x="138" y="444" class="cardTitle">Doctor Dashboard</text>
+      <text x="138" y="463" class="cardBody">Patients, vitals, predictions, timeline</text>
+    </g>
+
+    <g>
+      <rect x="84" y="502" rx="18" ry="18" width="312" height="74" fill="#111827" fill-opacity="0.88" stroke="#38bdf8" stroke-opacity="0.16" />
+      <circle cx="112" cy="539" r="14" fill="#38bdf8" fill-opacity="0.18" stroke="#38bdf8" stroke-opacity="0.4" />
+      <text x="112" y="544" text-anchor="middle" class="flowNum" fill="#38bdf8">N</text>
+      <text x="138" y="530" class="cardTitle">Nurse Dashboard</text>
+      <text x="138" y="549" class="cardBody">Record vitals and generate handover</text>
+    </g>
+
+    <g>
+      <rect x="84" y="588" rx="18" ry="18" width="312" height="74" fill="#111827" fill-opacity="0.88" stroke="#38bdf8" stroke-opacity="0.16" />
+      <circle cx="112" cy="625" r="14" fill="#38bdf8" fill-opacity="0.18" stroke="#38bdf8" stroke-opacity="0.4" />
+      <text x="112" y="630" text-anchor="middle" class="flowNum" fill="#38bdf8">A</text>
+      <text x="138" y="616" class="cardTitle">Admin Dashboard</text>
+      <text x="138" y="635" class="cardBody">Manage staff, alerts, reports, system health</text>
+    </g>
+
+    <text x="88" y="682" class="tiny">All frontend requests use the shared axios wrapper in `src/services/api.ts`.</text>
+  </g>
+
+  <line x1="420" y1="460" x2="452" y2="460" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow)" />
+
+  <g filter="url(#shadow)">
+    <rect x="452" y="245" rx="28" ry="28" width="282" height="430" fill="#0f172a" fill-opacity="0.82" stroke="#ffffff" stroke-opacity="0.08" />
+    <rect x="452" y="245" rx="28" ry="28" width="282" height="64" fill="#0b1222" fill-opacity="0.92" />
+    <rect x="452" y="245" rx="28" ry="28" width="12" height="430" fill="url(#accentGreen)" />
+    <text x="480" y="282" class="section">API Gateway</text>
+    <text x="480" y="307" class="tiny">Auth, routing, and service discovery</text>
+
+    <rect x="476" y="332" rx="16" ry="16" width="234" height="164" fill="#111827" fill-opacity="0.88" stroke="#4ade80" stroke-opacity="0.18" />
+    <text x="498" y="360" class="cardTitle">What it does</text>
+    <text x="498" y="387" class="cardBody">JWT / auth filter</text>
+    <text x="498" y="412" class="cardBody">Routes `/api/*` to the right service</text>
+    <text x="498" y="437" class="cardBody">Uses Eureka for service lookup</text>
+    <text x="498" y="462" class="cardBody">Returns JSON to the frontend</text>
+
+    <text x="476" y="530" class="tiny">Example routes</text>
+    <g>
+      <rect x="476" y="544" rx="12" ry="12" width="104" height="32" fill="#14532d" fill-opacity="0.35" stroke="#4ade80" stroke-opacity="0.22" />
+      <text x="528" y="564" text-anchor="middle" class="chip">/api/access/login</text>
+    </g>
+    <g>
+      <rect x="588" y="544" rx="12" ry="12" width="122" height="32" fill="#14532d" fill-opacity="0.35" stroke="#4ade80" stroke-opacity="0.22" />
+      <text x="649" y="564" text-anchor="middle" class="chip">/api/patients/**</text>
+    </g>
+    <g>
+      <rect x="476" y="588" rx="12" ry="12" width="104" height="32" fill="#14532d" fill-opacity="0.35" stroke="#4ade80" stroke-opacity="0.22" />
+      <text x="528" y="608" text-anchor="middle" class="chip">/api/vitals/**</text>
+    </g>
+    <g>
+      <rect x="588" y="588" rx="12" ry="12" width="122" height="32" fill="#14532d" fill-opacity="0.35" stroke="#4ade80" stroke-opacity="0.22" />
+      <text x="649" y="608" text-anchor="middle" class="chip">/api/reports/**</text>
+    </g>
+
+    <text x="476" y="650" class="tiny">Spring Cloud Gateway + auth filter + load balancing</text>
+  </g>
+
+  <line x1="734" y1="460" x2="766" y2="460" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow)" />
+
+  <g filter="url(#shadow)">
+    <rect x="768" y="245" rx="28" ry="28" width="772" height="430" fill="#0f172a" fill-opacity="0.82" stroke="#ffffff" stroke-opacity="0.08" />
+    <rect x="768" y="245" rx="28" ry="28" width="772" height="64" fill="#0b1222" fill-opacity="0.92" />
+    <rect x="768" y="245" rx="28" ry="28" width="12" height="430" fill="url(#accentPurple)" />
+    <text x="796" y="282" class="section">Backend Microservices</text>
+    <text x="796" y="307" class="tiny">Each service owns one slice of the domain</text>
+
+    <g>
+      <rect x="792" y="332" rx="18" ry="18" width="226" height="98" fill="#111827" fill-opacity="0.88" stroke="#a78bfa" stroke-opacity="0.18" />
+      <text x="814" y="358" class="cardTitle">Auth Service</text>
+      <text x="814" y="382" class="cardBody">Verifies login and role permissions</text>
+      <text x="814" y="404" class="cardBody">Issues the authenticated session</text>
+    </g>
+
+    <g>
+      <rect x="1032" y="332" rx="18" ry="18" width="226" height="98" fill="#111827" fill-opacity="0.88" stroke="#a78bfa" stroke-opacity="0.18" />
+      <text x="1054" y="358" class="cardTitle">Patient Service</text>
+      <text x="1054" y="382" class="cardBody">Stores patient profiles and assignments</text>
+      <text x="1054" y="404" class="cardBody">Feeds doctor and nurse dashboards</text>
+    </g>
+
+    <g>
+      <rect x="1272" y="332" rx="18" ry="18" width="226" height="98" fill="#111827" fill-opacity="0.88" stroke="#a78bfa" stroke-opacity="0.18" />
+      <text x="1294" y="358" class="cardTitle">Vitals Service</text>
+      <text x="1294" y="382" class="cardBody">Saves bedside readings and trends</text>
+      <text x="1294" y="404" class="cardBody">Drives real-time monitoring views</text>
+    </g>
+
+    <g>
+      <rect x="792" y="448" rx="18" ry="18" width="226" height="98" fill="#111827" fill-opacity="0.88" stroke="#a78bfa" stroke-opacity="0.18" />
+      <text x="814" y="474" class="cardTitle">Report Service</text>
+      <text x="814" y="498" class="cardBody">Generates PDFs and summary exports</text>
+      <text x="814" y="520" class="cardBody">Used by doctor and nurse dashboards</text>
+    </g>
+
+    <g>
+      <rect x="1032" y="448" rx="18" ry="18" width="226" height="98" fill="#111827" fill-opacity="0.88" stroke="#a78bfa" stroke-opacity="0.18" />
+      <text x="1054" y="474" class="cardTitle">AI Prediction Service</text>
+      <text x="1054" y="498" class="cardBody">Scores risk and predicts deterioration</text>
+      <text x="1054" y="520" class="cardBody">Pushes results back to the UI</text>
+    </g>
+
+    <g>
+      <rect x="1272" y="448" rx="18" ry="18" width="226" height="98" fill="#111827" fill-opacity="0.88" stroke="#a78bfa" stroke-opacity="0.18" />
+      <text x="1294" y="474" class="cardTitle">Alerts / Notifications</text>
+      <text x="1294" y="498" class="cardBody">Raises critical alerts and escalations</text>
+      <text x="1294" y="520" class="cardBody">Can feed live popups or notifications</text>
+    </g>
+
+    <text x="792" y="580" class="tiny">Services connect to MySQL, Redis, Kafka, Eureka, and observability tools below.</text>
+  </g>
+
+  <line x1="1154" y1="676" x2="1154" y2="708" stroke="#cbd5e1" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="60" y="728" class="subtitle">Shared infrastructure used by the backend services</text>
+
+  <!-- Infrastructure row -->
+  <g filter="url(#shadow)">
+    <rect x="60" y="748" rx="24" ry="24" width="260" height="220" fill="#0f172a" fill-opacity="0.82" stroke="#ffffff" stroke-opacity="0.08" />
+    <rect x="60" y="748" rx="24" ry="24" width="12" height="220" fill="url(#accentBlue)" />
+    <text x="88" y="786" class="section">Eureka</text>
+    <text x="88" y="812" class="cardBody">Service discovery</text>
+    <text x="88" y="838" class="cardBody">Services register here</text>
+    <text x="88" y="864" class="cardBody">Gateway finds instances</text>
+    <text x="88" y="900" class="tiny">backend/eureka-server</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="340" y="748" rx="24" ry="24" width="260" height="220" fill="#0f172a" fill-opacity="0.82" stroke="#ffffff" stroke-opacity="0.08" />
+    <rect x="340" y="748" rx="24" ry="24" width="12" height="220" fill="url(#accentOrange)" />
+    <text x="368" y="786" class="section">MySQL</text>
+    <text x="368" y="812" class="cardBody">Persistent patient records</text>
+    <text x="368" y="838" class="cardBody">Vitals, reports, staff data</text>
+    <text x="368" y="864" class="cardBody">Read and write storage</text>
+    <text x="368" y="900" class="tiny">backend databases</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="620" y="748" rx="24" ry="24" width="260" height="220" fill="#0f172a" fill-opacity="0.82" stroke="#ffffff" stroke-opacity="0.08" />
+    <rect x="620" y="748" rx="24" ry="24" width="12" height="220" fill="url(#accentGreen)" />
+    <text x="648" y="786" class="section">Redis</text>
+    <text x="648" y="812" class="cardBody">Cache and session state</text>
+    <text x="648" y="838" class="cardBody">Fast lookups and queues</text>
+    <text x="648" y="864" class="cardBody">Helps offline sync paths</text>
+    <text x="648" y="900" class="tiny">optional cache layer</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="900" y="748" rx="24" ry="24" width="260" height="220" fill="#0f172a" fill-opacity="0.82" stroke="#ffffff" stroke-opacity="0.08" />
+    <rect x="900" y="748" rx="24" ry="24" width="12" height="220" fill="url(#accentPurple)" />
+    <text x="928" y="786" class="section">Kafka</text>
+    <text x="928" y="812" class="cardBody">Event bus for live updates</text>
+    <text x="928" y="838" class="cardBody">Alerts, predictions, vitals</text>
+    <text x="928" y="864" class="cardBody">Feeds real-time dashboards</text>
+    <text x="928" y="900" class="tiny">backend event stream</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="1180" y="748" rx="24" ry="24" width="360" height="220" fill="#0f172a" fill-opacity="0.82" stroke="#ffffff" stroke-opacity="0.08" />
+    <rect x="1180" y="748" rx="24" ry="24" width="12" height="220" fill="url(#accentOrange)" />
+    <text x="1208" y="786" class="section">Observability</text>
+    <text x="1208" y="812" class="cardBody">Zipkin traces for request timing</text>
+    <text x="1208" y="838" class="cardBody">Prometheus metrics and Grafana</text>
+    <text x="1208" y="864" class="cardBody">Useful for debugging service health</text>
+    <text x="1208" y="900" class="tiny">monitoring and tracing</text>
+  </g>
+
+  <text x="60" y="1020" class="footer">
+    Solid arrows show HTTP / REST traffic. The backend also emits live events and traces that keep the dashboards updated and the system observable.
+  </text>
+</svg>

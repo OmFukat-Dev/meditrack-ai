@@ -2,10 +2,12 @@ package com.meditrack.alert.controller;
 
 import com.meditrack.alert.service.*;
 import com.meditrack.alert.entity.Alert;
+import com.meditrack.alert.entity.AuditLog;
 import com.meditrack.alert.entity.EscalationRule;
 import com.meditrack.alert.entity.Notification;
 import com.meditrack.alert.saga.SagaOrchestrator;
 import com.meditrack.alert.saga.SagaStep;
+import com.meditrack.alert.saga.SagaStatus;
 import io.micrometer.core.annotation.Counted;
 import io.micrometer.core.annotation.Timed;
 import org.slf4j.Logger;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -46,8 +49,13 @@ public class AlertServiceController {
     @PostMapping("/alerts")
     @Counted(value = "alert.create", description = "Number of alerts created")
     @Timed(value = "alert.create.time", description = "Time taken to create alert")
-    public ResponseEntity<?> createAlert(@Valid @RequestBody Alert alert) {
+    public ResponseEntity<?> createAlert(@Valid @RequestBody Alert alert,
+                                       @RequestHeader(value = "X-User-Role", required = false) String userRole,
+                                       @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
         try {
+            if (!canAccessDepartment(alert.getDepartment(), userRole, userDepartment)) {
+                return forbiddenDepartmentResponse();
+            }
             logger.info("Creating alert: {}", alert.getId());
             
             Alert createdAlert = alertService.createAlert(alert);
@@ -67,14 +75,24 @@ public class AlertServiceController {
     @PostMapping("/alerts/{alertId}/process")
     @Counted(value = "alert.process", description = "Number of alerts processed")
     @Timed(value = "alert.process.time", description = "Time taken to process alert")
-    public ResponseEntity<?> processAlert(@PathVariable String alertId) {
+    public ResponseEntity<?> processAlert(@PathVariable String alertId,
+                                        @RequestHeader(value = "X-User-Role", required = false) String userRole,
+                                        @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
         try {
             logger.info("Processing alert: {}", alertId);
+
+            Alert alert = alertService.getAlert(alertId);
+            if (alert == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Alert not found", "alertId", alertId));
+            }
+            if (!canAccessDepartment(alert.getDepartment(), userRole, userDepartment)) {
+                return forbiddenDepartmentResponse();
+            }
             
             boolean success = alertService.processAlert(alertId);
             
             // Log alert processing
-            Alert alert = alertService.getAlert(alertId);
             if (alert != null) {
                 auditService.logAlertProcessing(alert, success);
             }
@@ -96,13 +114,18 @@ public class AlertServiceController {
     @GetMapping("/alerts/{alertId}")
     @Counted(value = "alert.get", description = "Number of alert requests")
     @Timed(value = "alert.get.time", description = "Time taken to get alert")
-    public ResponseEntity<?> getAlert(@PathVariable String alertId) {
+    public ResponseEntity<?> getAlert(@PathVariable String alertId,
+                                    @RequestHeader(value = "X-User-Role", required = false) String userRole,
+                                    @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
         try {
             Alert alert = alertService.getAlert(alertId);
             
             if (alert == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Alert not found", "alertId", alertId));
+            }
+            if (!canAccessDepartment(alert.getDepartment(), userRole, userDepartment)) {
+                return forbiddenDepartmentResponse();
             }
             
             return ResponseEntity.ok(alert);
@@ -117,15 +140,111 @@ public class AlertServiceController {
     @GetMapping("/alerts")
     @Counted(value = "alert.list", description = "Number of alert list requests")
     @Timed(value = "alert.list.time", description = "Time taken to list alerts")
-    public ResponseEntity<?> getAlerts(@RequestParam(defaultValue = "100") int limit) {
+    public ResponseEntity<?> getAlerts(@RequestParam(defaultValue = "100") int limit,
+                                     @RequestHeader(value = "X-User-Role", required = false) String userRole,
+                                     @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
         try {
-            List<Alert> alerts = alertService.getAlerts(limit);
+            List<Alert> alerts;
+            if (isAdmin(userRole)) {
+                alerts = alertService.getAlerts(limit);
+            } else if (isDepartmentCareRole(userRole) && userDepartment != null && !userDepartment.isBlank()) {
+                alerts = alertService.getAlertsByDepartment(userDepartment, limit);
+            } else {
+                return forbiddenDepartmentResponse();
+            }
             return ResponseEntity.ok(alerts);
             
         } catch (Exception e) {
             logger.error("Error getting alerts", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Failed to get alerts", "message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/alerts/patient/{patientId}")
+    @Counted(value = "alert.list.patient", description = "Number of patient alert list requests")
+    @Timed(value = "alert.list.patient.time", description = "Time taken to list patient alerts")
+    public ResponseEntity<?> getAlertsByPatient(@PathVariable String patientId,
+                                              @RequestHeader(value = "X-User-Role", required = false) String userRole,
+                                              @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
+        try {
+            List<Alert> alerts = alertService.getAlertsByPatient(patientId);
+            if (!isAdmin(userRole)) {
+                if (!isDepartmentCareRole(userRole) || userDepartment == null || userDepartment.isBlank()) {
+                    return forbiddenDepartmentResponse();
+                }
+                alerts = alerts.stream()
+                    .filter(alert -> sameDepartment(userDepartment, alert.getDepartment()))
+                    .toList();
+            }
+            return ResponseEntity.ok(alerts);
+            
+        } catch (Exception e) {
+            logger.error("Error getting alerts for patient: {}", patientId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to get alerts for patient", "message", e.getMessage()));
+        }
+    }
+    
+    @PatchMapping("/alerts/{alertId}/status")
+    @Counted(value = "alert.update.status", description = "Number of alert status updates")
+    @Timed(value = "alert.update.status.time", description = "Time taken to update alert status")
+    public ResponseEntity<?> updateAlertStatus(@PathVariable String alertId,
+                                             @RequestBody Map<String, String> payload,
+                                             @RequestHeader(value = "X-User-Role", required = false) String userRole,
+                                             @RequestHeader(value = "X-User-Email", required = false) String userEmail,
+                                             @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
+        try {
+            if (userRole == null || (!userRole.equalsIgnoreCase("doctor") && !userRole.equalsIgnoreCase("clinician") && !userRole.equalsIgnoreCase("admin"))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Access Denied", "message", "Only doctors and administrators can resolve or modify alerts"));
+            }
+
+            String statusStr = payload.get("status");
+            if (statusStr == null || statusStr.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bad Request", "message", "Status is required"));
+            }
+
+            Alert alert = alertService.getAlert(alertId);
+            if (alert == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Alert not found", "alertId", alertId));
+            }
+            if (!canAccessDepartment(alert.getDepartment(), userRole, userDepartment)) {
+                return forbiddenDepartmentResponse();
+            }
+
+            Alert.AlertStatus status;
+            try {
+                status = Alert.AlertStatus.valueOf(statusStr.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Bad Request", "message", "Invalid status value: " + statusStr));
+            }
+
+            if (!AlertStatusTransitionValidator.isAllowed(alert.getStatus(), status)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Invalid transition", "message",
+                        "Cannot transition from " + alert.getStatus() + " to " + status));
+            }
+
+            alert.setStatus(status);
+            if (status == Alert.AlertStatus.RESOLVED) {
+                alert.setProcessedAt(LocalDateTime.now());
+            }
+            if (status == Alert.AlertStatus.ESCALATED) {
+                alert.setEscalationLevel("MANUAL");
+                alert.setEscalatedAt(LocalDateTime.now());
+            }
+            
+            Alert updatedAlert = alertService.createAlert(alert);
+            auditService.logAlertProcessing(updatedAlert, true);
+
+            return ResponseEntity.ok(updatedAlert);
+
+        } catch (Exception e) {
+            logger.error("Error updating alert status: {}", alertId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Failed to update alert status", "message", e.getMessage()));
         }
     }
     
@@ -384,7 +503,7 @@ public class AlertServiceController {
                 endTime = LocalDateTime.now();
             }
             
-            List<AuditService.AuditLog> logs = auditService.getAuditLogs(startTime, endTime, limit);
+            List<AuditLog> logs = auditService.getAuditLogs(startTime, endTime, limit);
             
             return ResponseEntity.ok(logs);
             
@@ -402,7 +521,7 @@ public class AlertServiceController {
                                                 @PathVariable String entityId,
                                                 @RequestParam(defaultValue = "50") int limit) {
         try {
-            List<AuditService.AuditLog> logs = auditService.getAuditLogsByEntity(entityType, entityId, limit);
+            List<AuditLog> logs = auditService.getAuditLogsByEntity(entityType, entityId, limit);
             
             return ResponseEntity.ok(logs);
             
@@ -419,7 +538,7 @@ public class AlertServiceController {
     public ResponseEntity<?> getAuditLogsByUser(@PathVariable String userId,
                                               @RequestParam(defaultValue = "50") int limit) {
         try {
-            List<AuditService.AuditLog> logs = auditService.getAuditLogsByUser(userId, limit);
+            List<AuditLog> logs = auditService.getAuditLogsByUser(userId, limit);
             
             return ResponseEntity.ok(logs);
             
@@ -503,6 +622,37 @@ public class AlertServiceController {
         // This would create actual saga steps based on the request
         // For now, return empty list as placeholder
         return steps;
+    }
+
+    private boolean canAccessDepartment(String resourceDepartment, String userRole, String userDepartment) {
+        if (isAdmin(userRole)) {
+            return true;
+        }
+        return isDepartmentCareRole(userRole) && sameDepartment(userDepartment, resourceDepartment);
+    }
+
+    private boolean isAdmin(String userRole) {
+        return userRole != null && (userRole.equalsIgnoreCase("admin") || userRole.equalsIgnoreCase("system"));
+    }
+
+    private boolean isDepartmentCareRole(String userRole) {
+        return userRole != null
+            && (userRole.equalsIgnoreCase("doctor")
+                || userRole.equalsIgnoreCase("clinician")
+                || userRole.equalsIgnoreCase("nurse"));
+    }
+
+    private boolean sameDepartment(String userDepartment, String resourceDepartment) {
+        return userDepartment != null
+            && resourceDepartment != null
+            && !userDepartment.isBlank()
+            && !resourceDepartment.isBlank()
+            && userDepartment.trim().equalsIgnoreCase(resourceDepartment.trim());
+    }
+
+    private ResponseEntity<?> forbiddenDepartmentResponse() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(Map.of("error", "Access Denied", "message", "Department access is required for this patient resource"));
     }
     
     // Request DTOs

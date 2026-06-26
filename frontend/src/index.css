@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-dark-950 text-dark-50 font-sans antialiased overflow-x-hidden;
+  }
+}
+
+@layer components {
+  /* Custom Tailwind UI Components */
+  .glass-panel {
+    @apply bg-dark-900/60 backdrop-blur-xl border border-white/5 rounded-2xl shadow-card transition-all duration-300;
+  }
+  
+  .glass-card {
+    @apply bg-dark-800/40 backdrop-blur-md border border-white/5 rounded-2xl shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-card-hover hover:border-white/10;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-primary text-white font-semibold py-3 px-6 rounded-xl shadow-glow hover:shadow-glow-lg transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply bg-dark-800/50 text-dark-200 border border-dark-700 font-medium py-2 px-5 rounded-lg transition-all duration-300 hover:bg-dark-700 hover:text-white flex items-center justify-center gap-2;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-white/10 bg-dark-900/80 text-white px-4 py-3 outline-none transition-all duration-300 placeholder:text-dark-500 focus:border-primary-400 focus:ring-2 focus:ring-primary-400/20;
+  }
+}
+
+/* Custom Scrollbar for sleekness */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-dark-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-dark-600;
+}
+
+/* Autofill styling override for premium dark mode aesthetics */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #0b0f19 inset !important; /* Matches bg-dark-900/80 shade */
+  -webkit-text-fill-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

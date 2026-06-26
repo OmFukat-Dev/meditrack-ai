@@ -43,6 +43,7 @@ public class VitalReadingMessage {
     @DecimalMax(value = "1.0", message = "Quality score must be at most 1.0")
     private BigDecimal qualityScore;
     
+    @NotBlank(message = "Notes are required")
     @Size(max = 1000, message = "Notes must not exceed 1000 characters")
     private String notes;
     
@@ -50,6 +51,14 @@ public class VitalReadingMessage {
     private String messageId;
     private String correlationId;
     private String processingSource;
+    
+    @NotBlank(message = "Nurse identifier is required")
+    @Size(max = 100, message = "Nurse identifier must not exceed 100 characters")
+    private String nurseId;
+    
+    @NotBlank(message = "Department is required")
+    @Size(max = 100, message = "Department must not exceed 100 characters")
+    private String department;
     
     // Constructors
     public VitalReadingMessage() {}
@@ -109,6 +118,12 @@ public class VitalReadingMessage {
     public String getProcessingSource() { return processingSource; }
     public void setProcessingSource(String processingSource) { this.processingSource = processingSource; }
     
+    public String getNurseId() { return nurseId; }
+    public void setNurseId(String nurseId) { this.nurseId = nurseId; }
+    
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+    
     // Utility methods
     public boolean isBloodPressure() { return "BLOOD_PRESSURE".equals(vitalType); }
     public boolean isHeartRate() { return "HEART_RATE".equals(vitalType); }
@@ -139,6 +154,8 @@ public class VitalReadingMessage {
                ", deviceId='" + deviceId + '\'' +
                ", location='" + location + '\'' +
                ", qualityScore=" + qualityScore +
+               ", nurseId='" + nurseId + '\'' +
+               ", department='" + department + '\'' +
                '}';
     }
 }

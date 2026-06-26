@@ -1,6 +1,8 @@
 package com.meditrack.alert.repository;
 
 import com.meditrack.alert.entity.Alert;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,6 +19,7 @@ public interface AlertRepository extends JpaRepository<Alert, String> {
     
     @Query("SELECT a FROM Alert a WHERE a.patientId = :patientId ORDER BY a.createdAt DESC")
     List<Alert> findByPatientIdOrderByCreatedAtDesc(@Param("patientId") String patientId);
+    Page<Alert> findByDepartmentIgnoreCase(String department, Pageable pageable);
     
     @Query("SELECT a FROM Alert a WHERE a.alertType = :alertType ORDER BY a.createdAt DESC")
     List<Alert> findByAlertTypeOrderByCreatedAtDesc(@Param("alertType") String alertType);
@@ -35,7 +38,7 @@ public interface AlertRepository extends JpaRepository<Alert, String> {
     @Query("SELECT a FROM Alert a WHERE a.escalationLevel IS NOT NULL ORDER BY a.escalatedAt DESC")
     List<Alert> findEscalatedAlertsOrderByEscalatedAtDesc();
     
-    @Query("SELECT a FROM Alert a WHERE a.status = 'PENDING' ORDER BY a.createdAt ASC")
+    @Query("SELECT a FROM Alert a WHERE a.status = 'ACTIVE' ORDER BY a.createdAt ASC")
     List<Alert> findPendingAlertsOrderByCreatedAtAsc();
     
     @Query("SELECT COUNT(a) FROM Alert a WHERE a.createdAt >= :startTime")

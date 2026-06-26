@@ -8,6 +8,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -295,6 +296,10 @@ public class RedisCacheService {
     }
     
     public void deleteBatch(List<String> keys) {
+        deleteBatch((Collection<String>) keys);
+    }
+
+    public void deleteBatch(Collection<String> keys) {
         try {
             redisTemplate.delete(keys);
             logger.debug("Batch deleted {} keys", keys.size());
@@ -331,9 +336,7 @@ public class RedisCacheService {
     public Map<String, Object> getCacheStats() {
         try {
             // Get Redis info
-            Object info = redisTemplate.execute(connection -> {
-                return connection.info();
-            });
+            Object info = redisTemplate.execute((org.springframework.data.redis.core.RedisCallback<Object>) connection -> connection.info());
             
             return Map.of(
                 "redis_info", info,

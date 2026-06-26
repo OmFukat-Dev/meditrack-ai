@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": [
+    "src/store",
+    "src/auth",
+    "src/database",
+    "src/AppSimple.tsx",
+    "src/pages/AdminDashboardAdvanced.tsx",
+    "src/pages/AdminDashboardComplete.tsx",
+    "src/pages/AdminDashboardModern.tsx",
+    "src/pages/AdminDashboardWorking.tsx",
+    "src/pages/DoctorDashboardSimple.tsx",
+    "src/pages/Login.tsx",
+    "src/pages/LoginPage.tsx",
+    "src/pages/NurseDashboard.tsx"
+  ]
+}

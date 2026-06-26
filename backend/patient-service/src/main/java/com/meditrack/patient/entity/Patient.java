@@ -72,9 +72,30 @@ public class Patient {
     
     @Column(name = "updated_by", length = 50)
     private String updatedBy;
+
+    @Column(name = "assigned_clinician_name", length = 100)
+    private String assignedClinicianName;
+
+    @Column(name = "assigned_clinician_email", length = 120)
+    private String assignedClinicianEmail;
+
+    @Column(name = "viewer_email", length = 120)
+    private String viewerEmail;
+
+    @Column(name = "department", length = 100)
+    private String department;
+
+    @Column(name = "ward_number", length = 50)
+    private String wardNumber;
+
+    @Column(name = "bed_number", length = 50)
+    private String bedNumber;
     
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
+
+    @Column(name = "clinical_status", length = 50)
+    private String clinicalStatus = "Stable";
     
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -151,9 +172,30 @@ public class Patient {
     
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
+
+    public String getAssignedClinicianName() { return assignedClinicianName; }
+    public void setAssignedClinicianName(String assignedClinicianName) { this.assignedClinicianName = assignedClinicianName; }
+
+    public String getAssignedClinicianEmail() { return assignedClinicianEmail; }
+    public void setAssignedClinicianEmail(String assignedClinicianEmail) { this.assignedClinicianEmail = assignedClinicianEmail; }
+
+    public String getViewerEmail() { return viewerEmail; }
+    public void setViewerEmail(String viewerEmail) { this.viewerEmail = viewerEmail; }
+
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+
+    public String getWardNumber() { return wardNumber; }
+    public void setWardNumber(String wardNumber) { this.wardNumber = wardNumber; }
+
+    public String getBedNumber() { return bedNumber; }
+    public void setBedNumber(String bedNumber) { this.bedNumber = bedNumber; }
     
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }
+
+    public String getClinicalStatus() { return clinicalStatus; }
+    public void setClinicalStatus(String clinicalStatus) { this.clinicalStatus = clinicalStatus; }
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

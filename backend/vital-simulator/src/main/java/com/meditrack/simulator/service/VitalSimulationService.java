@@ -400,8 +400,8 @@ public class VitalSimulationService {
         status.setSimulationId(instance.getSimulationId());
         status.setStatus(instance.getStatus());
         status.setPatientCount(instance.getPatientCount());
-        status.setVitalsGenerated(instance.getVitalsGenerated());
-        status.setAnomaliesGenerated(instance.getAnomaliesGenerated());
+        status.setVitalsGenerated(Math.toIntExact(instance.getVitalsGenerated()));
+        status.setAnomaliesGenerated(Math.toIntExact(instance.getAnomaliesGenerated()));
         status.setStartTime(instance.getStartTime());
         status.setLastUpdate(instance.getLastUpdate());
         

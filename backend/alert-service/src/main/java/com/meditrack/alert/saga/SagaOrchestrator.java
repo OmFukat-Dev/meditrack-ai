@@ -64,7 +64,7 @@ public class SagaOrchestrator {
                     execution.addCompletedStep(step);
                     return executeStepsSequentially(execution, stepIndex + 1);
                 } else {
-                    return CompletableFuture.completedFuture(result);
+                    return CompletableFuture.completedFuture(new SagaResult(false, result.getMessage()));
                 }
             });
     }

@@ -345,10 +345,10 @@ public class DriftDetectionService {
             for (Map.Entry<String, DataDistribution> entry : currentDistribution.entrySet()) {
                 String feature = entry.getKey();
                 DataDistribution current = entry.getValue();
-                DataDistribution baseline = baselineDistribution.get(feature);
+                DataDistribution baselineData = baselineDistribution.get(feature);
                 
-                if (baseline != null) {
-                    double change = Math.abs(current.getMean() - baseline.getMean()) / baseline.getMean();
+                if (baselineData != null) {
+                    double change = Math.abs(current.getMean() - baselineData.getMean()) / baselineData.getMean();
                     if (change > maxDistributionChange) {
                         maxDistributionChange = change;
                         mostChangedFeature = feature;

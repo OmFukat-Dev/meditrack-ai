@@ -3,6 +3,7 @@ package com.meditrack.alert.service;
 import com.meditrack.alert.entity.Notification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -15,12 +16,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
+@ConditionalOnProperty(prefix = "meditrack.alert.legacy-notifications", name = "enabled", havingValue = "true")
 public class WebhookNotificationService implements NotificationChannelService {
     
     private static final Logger logger = LoggerFactory.getLogger(WebhookNotificationService.class);
     
-    @Autowired
-    private RestTemplate restTemplate;
+    private final RestTemplate restTemplate = new RestTemplate();
     
     @Override
     public boolean sendNotification(Notification notification) {

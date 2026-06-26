@@ -66,8 +66,13 @@ public class AiPredictionController {
     @PostMapping("/weka/models/predict")
     @Counted(value = "ai.prediction.weka.predict", description = "Number of Weka predictions")
     @Timed(value = "ai.prediction.weka.predict.time", description = "Time taken to make Weka prediction")
-    public ResponseEntity<?> makeWekaPrediction(@Valid @RequestBody WekaPredictionRequest request) {
+    public ResponseEntity<?> makeWekaPrediction(@Valid @RequestBody WekaPredictionRequest request,
+                                              @RequestHeader(value = "X-User-Role", required = false) String userRole,
+                                              @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
         try {
+            if (!canAccessDepartment(resolveDepartment(request.getInputFeatures()), userRole, userDepartment)) {
+                return forbiddenDepartmentResponse();
+            }
             logger.info("Making Weka prediction for model: {}", request.getModelName());
             
             WekaService.PredictionResult result = wekaService.makePrediction(
@@ -100,8 +105,17 @@ public class AiPredictionController {
     @PostMapping("/weka/models/predict/batch")
     @Counted(value = "ai.prediction.weka.predict.batch", description = "Number of Weka batch predictions")
     @Timed(value = "ai.prediction.weka.predict.batch.time", description = "Time taken to make Weka batch predictions")
-    public ResponseEntity<?> makeWekaBatchPrediction(@Valid @RequestBody WekaBatchPredictionRequest request) {
+    public ResponseEntity<?> makeWekaBatchPrediction(@Valid @RequestBody WekaBatchPredictionRequest request,
+                                                   @RequestHeader(value = "X-User-Role", required = false) String userRole,
+                                                   @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
         try {
+            if (request.getInputFeaturesList() != null) {
+                for (Map<String, Object> inputFeatures : request.getInputFeaturesList()) {
+                    if (!canAccessDepartment(resolveDepartment(inputFeatures), userRole, userDepartment)) {
+                        return forbiddenDepartmentResponse();
+                    }
+                }
+            }
             logger.info("Making Weka batch prediction for model: {} with {} samples", 
                        request.getModelName(), request.getInputFeaturesList().size());
             
@@ -211,8 +225,13 @@ public class AiPredictionController {
     @PostMapping("/news/score")
     @Counted(value = "ai.prediction.news.score", description = "Number of NEWS score calculations")
     @Timed(value = "ai.prediction.news.score.time", description = "Time taken to calculate NEWS score")
-    public ResponseEntity<?> calculateNewsScore(@Valid @RequestBody NewsScoringRequest request) {
+    public ResponseEntity<?> calculateNewsScore(@Valid @RequestBody NewsScoringRequest request,
+                                              @RequestHeader(value = "X-User-Role", required = false) String userRole,
+                                              @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
         try {
+            if (!canAccessDepartment(request.getDepartment(), userRole, userDepartment)) {
+                return forbiddenDepartmentResponse();
+            }
             logger.info("Calculating NEWS score for patient: {}", request.getPatientId());
             
             NewsScoringService.NewsScore newsScore = newsScoringService.calculateNewsScore(request.getVitals());
@@ -245,8 +264,13 @@ public class AiPredictionController {
     @PostMapping("/features/engineer")
     @Counted(value = "ai.prediction.features.engineer", description = "Number of feature engineering requests")
     @Timed(value = "ai.prediction.features.engineer.time", description = "Time taken to engineer features")
-    public ResponseEntity<?> engineerFeatures(@Valid @RequestBody FeatureEngineeringRequest request) {
+    public ResponseEntity<?> engineerFeatures(@Valid @RequestBody FeatureEngineeringRequest request,
+                                            @RequestHeader(value = "X-User-Role", required = false) String userRole,
+                                            @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
         try {
+            if (!canAccessDepartment(request.getDepartment(), userRole, userDepartment)) {
+                return forbiddenDepartmentResponse();
+            }
             logger.info("Engineering features for patient: {} with {} readings", 
                        request.getPatientId(), request.getVitalReadings().size());
             
@@ -472,6 +496,42 @@ public class AiPredictionController {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(health);
         }
     }
+
+    private boolean canAccessDepartment(String resourceDepartment, String userRole, String userDepartment) {
+        if (isAdmin(userRole)) {
+            return true;
+        }
+        return isDepartmentCareRole(userRole)
+            && resourceDepartment != null
+            && userDepartment != null
+            && !resourceDepartment.isBlank()
+            && !userDepartment.isBlank()
+            && resourceDepartment.trim().equalsIgnoreCase(userDepartment.trim());
+    }
+
+    private boolean isAdmin(String userRole) {
+        return userRole != null && (userRole.equalsIgnoreCase("admin") || userRole.equalsIgnoreCase("system"));
+    }
+
+    private boolean isDepartmentCareRole(String userRole) {
+        return userRole != null
+            && (userRole.equalsIgnoreCase("doctor")
+                || userRole.equalsIgnoreCase("clinician")
+                || userRole.equalsIgnoreCase("nurse"));
+    }
+
+    private String resolveDepartment(Map<String, Object> inputFeatures) {
+        if (inputFeatures == null) {
+            return null;
+        }
+        Object value = inputFeatures.get("department");
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private ResponseEntity<?> forbiddenDepartmentResponse() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(Map.of("error", "Access Denied", "message", "Department access is required for this patient prediction"));
+    }
     
     // Request/Response DTOs
     public static class WekaTrainingRequest {
@@ -532,11 +592,15 @@ public class AiPredictionController {
     
     public static class NewsScoringRequest {
         private String patientId;
+        private String department;
         private NewsScoringService.PatientVitals vitals;
         
         // Getters and setters
         public String getPatientId() { return patientId; }
         public void setPatientId(String patientId) { this.patientId = patientId; }
+
+        public String getDepartment() { return department; }
+        public void setDepartment(String department) { this.department = department; }
         
         public NewsScoringService.PatientVitals getVitals() { return vitals; }
         public void setVitals(NewsScoringService.PatientVitals vitals) { this.vitals = vitals; }
@@ -544,11 +608,15 @@ public class AiPredictionController {
     
     public static class FeatureEngineeringRequest {
         private String patientId;
+        private String department;
         private List<FeatureEngineeringService.VitalReading> vitalReadings;
         
         // Getters and setters
         public String getPatientId() { return patientId; }
         public void setPatientId(String patientId) { this.patientId = patientId; }
+
+        public String getDepartment() { return department; }
+        public void setDepartment(String department) { this.department = department; }
         
         public List<FeatureEngineeringService.VitalReading> getVitalReadings() { return vitalReadings; }
         public void setVitalReadings(List<FeatureEngineeringService.VitalReading> vitalReadings) { this.vitalReadings = vitalReadings; }

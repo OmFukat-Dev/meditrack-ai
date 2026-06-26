@@ -40,7 +40,16 @@ function Stop-DockerServices {
     Set-Location $PSScriptRoot\..
     
     try {
-        docker-compose down
+        if (Get-Command docker-compose -ErrorAction SilentlyContinue) {
+            docker-compose down
+        }
+        elseif (Get-Command docker -ErrorAction SilentlyContinue) {
+            docker compose down
+        }
+        else {
+            Write-Host "Neither docker-compose nor docker was found in PATH." -ForegroundColor Red
+            return
+        }
         Write-Host "✅ Docker services stopped" -ForegroundColor Green
     } catch {
         Write-Host "❌ Error stopping Docker services: $_" -ForegroundColor Red
@@ -82,7 +91,7 @@ try {
     }
     
     Write-Host "`n🎉 All MediTrack AI services stopped successfully!" -ForegroundColor Green
-    Write-Host "💡 Tip: Use 'docker-compose up -d' to restart infrastructure services" -ForegroundColor Cyan
+    Write-Host "💡 Tip: Use 'docker compose up -d' to restart infrastructure services" -ForegroundColor Cyan
     
 } catch {
     Write-Host "❌ Error during shutdown: $_" -ForegroundColor Red

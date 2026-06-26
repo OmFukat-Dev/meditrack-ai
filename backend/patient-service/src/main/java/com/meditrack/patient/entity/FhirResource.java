@@ -4,12 +4,20 @@ import jakarta.persistence.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
 
 @Entity
-@Table(name = "fhir_resources")
+@Table(
+    name = "fhir_resources",
+    indexes = {
+        @Index(name = "idx_fhir_patient_type_resource_version", columnList = "patient_id, resource_type, resource_id, resource_version"),
+        @Index(name = "idx_fhir_patient_type_resource_created", columnList = "patient_id, resource_type, resource_id, created_at")
+    }
+)
 @EntityListeners(AuditingEntityListener.class)
 public class FhirResource {
     
@@ -23,6 +31,7 @@ public class FhirResource {
     
     @Column(name = "resource_type", nullable = false, length = 50)
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     private FhirResourceType resourceType;
     
     @Column(name = "resource_id", nullable = false, length = 100)

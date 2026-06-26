@@ -3,12 +3,14 @@ package com.meditrack.alert.service;
 import com.meditrack.alert.entity.Notification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnProperty(prefix = "meditrack.alert.legacy-notifications", name = "enabled", havingValue = "true")
 public class EmailNotificationService implements NotificationChannelService {
     
     private static final Logger logger = LoggerFactory.getLogger(EmailNotificationService.class);

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#07111f" />
+    <title>MediTrack AI | Command Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      if (typeof global === 'undefined') {
+        window.global = window;
+      }
+    </script>
+  </head>
+  <body>
+    <div id="error-box" style="color: red; padding: 20px; font-family: monospace; font-size: 16px; background: black; z-index: 9999; position: fixed; top: 0; left: 0; display: none;"></div>
+    <script>
+      window.addEventListener('error', function(e) {
+        document.getElementById('error-box').style.display = 'block';
+        document.getElementById('error-box').innerHTML += '<p>ERROR: ' + e.message + '<br>' + e.filename + ':' + e.lineno + '</p>';
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        document.getElementById('error-box').style.display = 'block';
+        document.getElementById('error-box').innerHTML += '<p>PROMISE REJECTION: ' + (e.reason && e.reason.message ? e.reason.message : e.reason) + '</p>';
+      });
+    </script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -19,6 +19,13 @@ public class PatientResponse {
     private String emergencyContactPhone;
     private String createdBy;
     private String updatedBy;
+    private String assignedClinicianName;
+    private String assignedClinicianEmail;
+    private String viewerEmail;
+    private String department;
+    private String wardNumber;
+    private String bedNumber;
+    private String condition;
     private Boolean isActive;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -77,6 +84,27 @@ public class PatientResponse {
     
     public String getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
+
+    public String getAssignedClinicianName() { return assignedClinicianName; }
+    public void setAssignedClinicianName(String assignedClinicianName) { this.assignedClinicianName = assignedClinicianName; }
+
+    public String getAssignedClinicianEmail() { return assignedClinicianEmail; }
+    public void setAssignedClinicianEmail(String assignedClinicianEmail) { this.assignedClinicianEmail = assignedClinicianEmail; }
+
+    public String getViewerEmail() { return viewerEmail; }
+    public void setViewerEmail(String viewerEmail) { this.viewerEmail = viewerEmail; }
+
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+
+    public String getWardNumber() { return wardNumber; }
+    public void setWardNumber(String wardNumber) { this.wardNumber = wardNumber; }
+
+    public String getBedNumber() { return bedNumber; }
+    public void setBedNumber(String bedNumber) { this.bedNumber = bedNumber; }
+
+    public String getCondition() { return condition; }
+    public void setCondition(String condition) { this.condition = condition; }
     
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }

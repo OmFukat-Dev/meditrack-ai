@@ -36,18 +36,25 @@ public class RateLimitingService {
         private int remainingRequests;
         private long resetTime;
         private String limitType;
+        private String userMessage;
         
         public RateLimitResult(boolean allowed, int remainingRequests, long resetTime, String limitType) {
+            this(allowed, remainingRequests, resetTime, limitType, allowed ? "Request allowed" : "Rate limit exceeded");
+        }
+
+        public RateLimitResult(boolean allowed, int remainingRequests, long resetTime, String limitType, String userMessage) {
             this.allowed = allowed;
             this.remainingRequests = remainingRequests;
             this.resetTime = resetTime;
             this.limitType = limitType;
+            this.userMessage = userMessage;
         }
         
         public boolean isAllowed() { return allowed; }
         public int getRemainingRequests() { return remainingRequests; }
         public long getResetTime() { return resetTime; }
         public String getLimitType() { return limitType; }
+        public String getUserMessage() { return userMessage; }
     }
     
     // Rate limiting methods

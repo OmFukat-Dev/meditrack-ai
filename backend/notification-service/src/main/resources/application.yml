@@ -1,5 +1,5 @@
 server:
-  port: 8085
+  port: 8086
 
 spring:
   application:
@@ -88,6 +88,12 @@ management:
       show-details: always
     flyway:
       enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://zipkin:9411/api/v2/spans
   metrics:
     export:
       prometheus:
@@ -98,15 +104,42 @@ management:
 # Notification Configuration
 meditrack:
   notification:
+    kafka:
+      topic: notification-requests
     email:
+      simulated: true
       default-from: meditrack@hospital.com
       default-reply-to: support@hospital.com
     sms:
-      provider: TWILIO
+      simulated: true
+      provider: SIMULATED
       from-number: +1234567890
     push:
-      provider: FCM
+      simulated: true
+      provider: SIMULATED
       fcm-server-key: ${FCM_SERVER_KEY:test-key}
+    webhook:
+      simulated: true
+      provider: SIMULATED
+      signature-header: X-Meditrack-Signature
+      secret-key: ${WEBHOOK_SECRET_KEY:test-key}
+      timeout-seconds: 30
+
+logging:
+  level:
+    com.meditrack.notification: DEBUG
+    org.springframework.kafka: INFO
+    org.springframework.scheduling: INFO
+    org.springframework.web: INFO
+  pattern:
+    console: "ts=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=${spring.application.name} traceId=%X{traceId:-} spanId=%X{spanId:-} logger=%logger{36} thread=%thread msg=%msg%n"
+    file: "ts=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=${spring.application.name} traceId=%X{traceId:-} spanId=%X{spanId:-} logger=%logger{36} thread=%thread msg=%msg%n"
+  file:
+    name: logs/${spring.application.name}.log
+  logback:
+    rollingpolicy:
+      max-file-size: 25MB
+      max-history: 14
     retry:
       max-attempts: 3
       delay-seconds: 60

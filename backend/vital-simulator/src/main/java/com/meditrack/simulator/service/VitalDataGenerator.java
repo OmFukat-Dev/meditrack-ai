@@ -12,6 +12,18 @@ import java.util.concurrent.ThreadLocalRandom;
 public class VitalDataGenerator {
     
     private final Random random = new Random();
+    private static final String[] NURSE_IDS = {
+        "nurse-sarah",
+        "nurse-emily",
+        "nurse-jessica",
+        "nurse-monalisa",
+        "nurse-lana"
+    };
+    private static final String[] DEPARTMENTS = {
+        "Cardiology",
+        "Neurology",
+        "Oncology"
+    };
     
     // Vital type constants
     public static final String HEART_RATE = "HEART_RATE";
@@ -79,7 +91,7 @@ public class VitalDataGenerator {
         // Ensure within realistic bounds
         heartRate = clamp(heartRate, HEART_RATE_RANGE.minPossible, HEART_RATE_RANGE.maxPossible);
         
-        return new VitalReading(
+        VitalReading reading = new VitalReading(
             patientId,
             HEART_RATE,
             new BigDecimal(Math.round(heartRate)),
@@ -91,6 +103,7 @@ public class VitalDataGenerator {
             calculateQualityScore(heartRate, HEART_RATE_RANGE),
             "Generated heart rate reading"
         );
+        return withCareTeam(reading, patientId);
     }
     
     // Generate blood pressure with realistic patterns
@@ -122,7 +135,7 @@ public class VitalDataGenerator {
             systolic = diastolic + 20;
         }
         
-        return new VitalReading(
+        VitalReading reading = new VitalReading(
             patientId,
             BLOOD_PRESSURE,
             new BigDecimal(Math.round(systolic)),
@@ -136,6 +149,7 @@ public class VitalDataGenerator {
             new BigDecimal(Math.round(systolic)),
             new BigDecimal(Math.round(diastolic))
         );
+        return withCareTeam(reading, patientId);
     }
     
     // Generate temperature with realistic patterns
@@ -155,11 +169,11 @@ public class VitalDataGenerator {
         // Ensure realistic bounds
         temperature = clamp(temperature, TEMPERATURE_RANGE.minPossible, TEMPERATURE_RANGE.maxPossible);
         
-        return new VitalReading(
+        VitalReading reading = new VitalReading(
             patientId,
             TEMPERATURE,
             new BigDecimal(temperature).setScale(1, RoundingMode.HALF_UP),
-            "°C",
+            "C",
             timestamp,
             "SIMULATOR",
             "DEVICE_" + patientId,
@@ -167,6 +181,7 @@ public class VitalDataGenerator {
             calculateQualityScore(temperature, TEMPERATURE_RANGE),
             "Generated temperature reading"
         );
+        return withCareTeam(reading, patientId);
     }
     
     // Generate SpO2 with realistic patterns
@@ -183,7 +198,7 @@ public class VitalDataGenerator {
         // Ensure realistic bounds
         spo2 = clamp(spo2, SPO2_RANGE.minPossible, SPO2_RANGE.maxPossible);
         
-        return new VitalReading(
+        VitalReading reading = new VitalReading(
             patientId,
             SPO2,
             new BigDecimal(Math.round(spo2)),
@@ -195,6 +210,7 @@ public class VitalDataGenerator {
             calculateQualityScore(spo2, SPO2_RANGE),
             "Generated SpO2 reading"
         );
+        return withCareTeam(reading, patientId);
     }
     
     // Generate respiratory rate with realistic patterns
@@ -211,7 +227,7 @@ public class VitalDataGenerator {
         // Ensure realistic bounds
         respiratoryRate = clamp(respiratoryRate, RESPIRATORY_RATE_RANGE.minPossible, RESPIRATORY_RATE_RANGE.maxPossible);
         
-        return new VitalReading(
+        VitalReading reading = new VitalReading(
             patientId,
             RESPIRATORY_RATE,
             new BigDecimal(Math.round(respiratoryRate)),
@@ -223,6 +239,7 @@ public class VitalDataGenerator {
             calculateQualityScore(respiratoryRate, RESPIRATORY_RATE_RANGE),
             "Generated respiratory rate reading"
         );
+        return withCareTeam(reading, patientId);
     }
     
     // Calculate realistic variation based on activity level and time
@@ -405,6 +422,20 @@ public class VitalDataGenerator {
     private double clamp(double value, double min, double max) {
         return Math.max(min, Math.min(max, value));
     }
+
+    private VitalReading withCareTeam(VitalReading reading, String patientId) {
+        reading.setNurseId(deriveNurseId(patientId));
+        reading.setDepartment(deriveDepartment(patientId));
+        return reading;
+    }
+    
+    private String deriveNurseId(String patientId) {
+        return NURSE_IDS[Math.floorMod(patientId.hashCode(), NURSE_IDS.length)];
+    }
+    
+    private String deriveDepartment(String patientId) {
+        return DEPARTMENTS[Math.floorMod(patientId.hashCode(), DEPARTMENTS.length)];
+    }
     
     // Create default vital profile
     private VitalProfile createDefaultProfile() {
@@ -423,6 +454,8 @@ public class VitalDataGenerator {
         private String location;
         private BigDecimal qualityScore;
         private String notes;
+        private String nurseId;
+        private String department;
         private BigDecimal systolic;
         private BigDecimal diastolic;
         
@@ -479,6 +512,12 @@ public class VitalDataGenerator {
         
         public String getNotes() { return notes; }
         public void setNotes(String notes) { this.notes = notes; }
+        
+        public String getNurseId() { return nurseId; }
+        public void setNurseId(String nurseId) { this.nurseId = nurseId; }
+        
+        public String getDepartment() { return department; }
+        public void setDepartment(String department) { this.department = department; }
         
         public BigDecimal getSystolic() { return systolic; }
         public void setSystolic(BigDecimal systolic) { this.systolic = systolic; }

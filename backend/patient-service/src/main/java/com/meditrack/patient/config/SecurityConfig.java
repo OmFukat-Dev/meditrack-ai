@@ -15,24 +15,28 @@ import java.util.Arrays;
 @EnableWebSecurity
 public class SecurityConfig {
     
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.meditrack.patient.security.AccessValidationFilter accessValidationFilter;
+    
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .addFilterBefore(accessValidationFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(auth -> auth
                 // Health endpoints - public access
                 .requestMatchers("/actuator/health", "/actuator/info", "/actuator/metrics").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
                 // FHIR endpoints - public access for healthcare systems
                 .requestMatchers("/api/fhir/**").permitAll()
+                // Access login endpoint is intentionally public so the gateway can validate logins
+                .requestMatchers("/api/access/login").permitAll()
                 // Swagger/OpenAPI documentation - public access
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                // All other endpoints require authentication
-                .anyRequest().authenticated()
-            )
-            .oauth2ResourceServer(oauth2 -> oauth2
-                .jwt(jwt -> jwt.jwtDecoder(jwtDecoder()))
+                // Access control is enforced by the request filter and service layer
+                .anyRequest().permitAll()
             );
         
         return http.build();
@@ -45,8 +49,10 @@ public class SecurityConfig {
         org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
             "http://localhost:3000",  // React frontend
-            "http://localhost:8080",  // API Gateway
-            "http://localhost:8081",  // Patient Service
+            "http://localhost:5173",  // Vite frontend
+            "http://127.0.0.1:5173",  // Vite frontend via loopback
+            "http://localhost:8090",  // API Gateway
+            "http://localhost:8082",  // Patient Service
             "https://yourdomain.com"   // Production domain
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
@@ -71,12 +77,5 @@ public class SecurityConfig {
         
         source.registerCorsConfiguration("/**", configuration);
         return source;
-    }
-    
-    @Bean
-    public org.springframework.security.oauth2.jwt.JwtDecoder jwtDecoder() {
-        // This would be configured with your JWT secret key
-        // For development, we'll use a simple decoder
-        return org.springframework.security.oauth2.jwt.NimbusJwtDecoder.withJwkSetUri("http://localhost:8761/.well-known/jwks.json").build();
     }
 }

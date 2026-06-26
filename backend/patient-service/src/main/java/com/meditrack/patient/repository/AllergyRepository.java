@@ -33,12 +33,10 @@ public interface AllergyRepository extends JpaRepository<Allergy, Long> {
     
     // Severity-based queries
     List<Allergy> findBySeverity(String severity);
-    List<Allergy> findByPatientIdAndSeverity(Long patientId, String severity);
     List<Allergy> findByPatientIdAndIsSevere(Long patientId); // Assuming isSevere() method
-    
+
     // Allergy type queries
     List<Allergy> findByAllergyType(String allergyType);
-    List<Allergy> findByPatientIdAndAllergyType(Long patientId, String allergyType);
     
     // Complex search for advanced filtering
     @Query("SELECT a FROM Allergy a WHERE " +

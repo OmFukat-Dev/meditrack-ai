@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface FhirResourceRepository extends JpaRepository<FhirResource, Long> {
@@ -14,6 +15,11 @@ public interface FhirResourceRepository extends JpaRepository<FhirResource, Long
     // Basic CRUD operations
     List<FhirResource> findByPatientId(Long patientId);
     List<FhirResource> findByPatientIdOrderByCreatedAtDesc(Long patientId);
+    Optional<FhirResource> findFirstByPatientIdAndResourceTypeAndResourceIdOrderByCreatedAtDesc(
+        Long patientId,
+        FhirResource.FhirResourceType resourceType,
+        String resourceId
+    );
     
     // Resource type queries
     List<FhirResource> findByPatientIdAndResourceType(Long patientId, FhirResource.FhirResourceType resourceType);
@@ -25,21 +31,13 @@ public interface FhirResourceRepository extends JpaRepository<FhirResource, Long
     
     // Version queries
     List<FhirResource> findByPatientIdAndResourceIdAndResourceVersion(Long patientId, String resourceId, String resourceVersion);
-    List<FhirResource> findByResourceIdOrderByResourceVersionDesc(String resourceId);
-    
-    // Latest version queries
-    @Query("SELECT fr FROM FhirResource fr WHERE " +
-           "fr.patient.id = :patientId AND " +
-           "fr.resourceType = :resourceType AND " +
-           "fr.createdAt = (SELECT MAX(fr2.createdAt) FROM FhirResource fr2 WHERE " +
-           "fr2.patient.id = fr.patient.id AND " +
-           "fr2.resourceType = fr.resourceType AND " +
-           "fr2.resourceId = fr.resourceId)")
-    List<FhirResource> findLatestVersionByPatientIdAndResourceTypeAndResourceId(
-        @Param("patientId") Long patientId,
-        @Param("resourceType") FhirResource.FhirResourceType resourceType,
-        @Param("resourceId") String resourceId
+    Optional<FhirResource> findFirstByPatientIdAndResourceTypeAndResourceIdAndResourceVersion(
+        Long patientId,
+        FhirResource.FhirResourceType resourceType,
+        String resourceId,
+        String resourceVersion
     );
+    List<FhirResource> findByResourceIdOrderByResourceVersionDesc(String resourceId);
     
     // Date range queries
     @Query("SELECT fr FROM FhirResource fr WHERE " +

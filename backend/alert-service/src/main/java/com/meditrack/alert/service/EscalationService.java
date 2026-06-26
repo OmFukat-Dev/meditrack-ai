@@ -152,7 +152,9 @@ public class EscalationService {
     private List<EscalationRule> getApplicableEscalationRules(Alert alert) {
         try {
             return escalationRuleRepository.findByAlertTypeAndPriorityAndActive(
-                alert.getAlertType(), alert.getPriority(), true);
+                alert.getAlertType(),
+                alert.getPriority() == null ? null : EscalationRule.AlertPriority.valueOf(alert.getPriority().name()),
+                true);
         } catch (Exception e) {
             logger.error("Error getting escalation rules for alert: {}", alert.getId(), e);
             return List.of();

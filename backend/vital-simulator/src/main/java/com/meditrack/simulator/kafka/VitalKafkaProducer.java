@@ -11,12 +11,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.ListenableFutureCallback;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -50,27 +49,23 @@ public class VitalKafkaProducer {
             String messageJson = objectMapper.writeValueAsString(message);
             
             // Send to Kafka
-            ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(
+            CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(
                 simulationConfig.getKafkaProducer().getTopic(), 
                 vitalReading.getPatientId(), 
                 messageJson
             );
             
             CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
-            
-            future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
-                @Override
-                public void onSuccess(SendResult<String, String> result) {
+
+            future.whenComplete((result, ex) -> {
+                if (ex == null) {
                     messagesSent.incrementAndGet();
-                    logger.debug("Successfully sent vital reading: patientId={}, vitalType={}, value={}", 
+                    logger.debug("Successfully sent vital reading: patientId={}, vitalType={}, value={}",
                                vitalReading.getPatientId(), vitalReading.getVitalType(), vitalReading.getDisplayValue());
                     completableFuture.complete(true);
-                }
-                
-                @Override
-                public void onFailure(Throwable ex) {
+                } else {
                     messagesFailed.incrementAndGet();
-                    logger.error("Failed to send vital reading: patientId={}, vitalType={}, error={}", 
+                    logger.error("Failed to send vital reading: patientId={}, vitalType={}, error={}",
                                vitalReading.getPatientId(), vitalReading.getVitalType(), ex.getMessage());
                     completableFuture.complete(false);
                 }
@@ -103,24 +98,20 @@ public class VitalKafkaProducer {
             String batchJson = objectMapper.writeValueAsString(messages);
             
             // Send batch to Kafka
-            ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(
+            CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(
                 "vital-batches", 
                 "batch_" + System.currentTimeMillis(), 
                 batchJson
             );
             
             CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
-            
-            future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
-                @Override
-                public void onSuccess(SendResult<String, String> result) {
+
+            future.whenComplete((result, ex) -> {
+                if (ex == null) {
                     messagesSent.addAndGet(vitalReadings.size());
                     logger.debug("Successfully sent vital batch: size={}", vitalReadings.size());
                     completableFuture.complete(true);
-                }
-                
-                @Override
-                public void onFailure(Throwable ex) {
+                } else {
                     messagesFailed.addAndGet(vitalReadings.size());
                     logger.error("Failed to send vital batch: size={}, error={}", vitalReadings.size(), ex.getMessage());
                     completableFuture.complete(false);
@@ -147,7 +138,7 @@ public class VitalKafkaProducer {
     }
     
     // Send batch from queue
-    private void sendBatchFromQueue() {
+    private CompletableFuture<Boolean> sendBatchFromQueue() {
         List<VitalDataGenerator.VitalReading> batch = new ArrayList<>();
         
         // Collect batch items
@@ -157,8 +148,10 @@ public class VitalKafkaProducer {
         }
         
         if (!batch.isEmpty()) {
-            sendVitalBatch(batch);
+            return sendVitalBatch(batch);
         }
+
+        return CompletableFuture.completedFuture(true);
     }
     
     // Flush remaining items in queue
@@ -183,25 +176,21 @@ public class VitalKafkaProducer {
             
             String alertJson = objectMapper.writeValueAsString(alert);
             
-            ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(
+            CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(
                 "vital-alerts", 
                 patientId + "_" + vitalType, 
                 alertJson
             );
             
             CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
-            
-            future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
-                @Override
-                public void onSuccess(SendResult<String, String> result) {
-                    logger.info("Successfully sent anomaly alert: patientId={}, vitalType={}, anomalyType={}", 
+
+            future.whenComplete((result, ex) -> {
+                if (ex == null) {
+                    logger.info("Successfully sent anomaly alert: patientId={}, vitalType={}, anomalyType={}",
                                patientId, vitalType, anomalyType);
                     completableFuture.complete(true);
-                }
-                
-                @Override
-                public void onFailure(Throwable ex) {
-                    logger.error("Failed to send anomaly alert: patientId={}, vitalType={}, error={}", 
+                } else {
+                    logger.error("Failed to send anomaly alert: patientId={}, vitalType={}, error={}",
                                patientId, vitalType, ex.getMessage());
                     completableFuture.complete(false);
                 }
@@ -220,23 +209,19 @@ public class VitalKafkaProducer {
         try {
             String statusJson = objectMapper.writeValueAsString(status);
             
-            ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(
+            CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(
                 "simulation-status", 
                 "status_" + System.currentTimeMillis(), 
                 statusJson
             );
             
             CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
-            
-            future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
-                @Override
-                public void onSuccess(SendResult<String, String> result) {
+
+            future.whenComplete((result, ex) -> {
+                if (ex == null) {
                     logger.debug("Successfully sent simulation status: {}", status.getStatus());
                     completableFuture.complete(true);
-                }
-                
-                @Override
-                public void onFailure(Throwable ex) {
+                } else {
                     logger.error("Failed to send simulation status: error={}", ex.getMessage());
                     completableFuture.complete(false);
                 }
@@ -293,6 +278,8 @@ public class VitalKafkaProducer {
         message.setLocation(reading.getLocation());
         message.setQualityScore(reading.getQualityScore());
         message.setNotes(reading.getNotes());
+        message.setNurseId(reading.getNurseId());
+        message.setDepartment(reading.getDepartment());
         message.setMessageId("sim_" + System.currentTimeMillis() + "_" + reading.getPatientId());
         message.setProcessingSource("vital-simulator");
         
@@ -324,6 +311,8 @@ public class VitalKafkaProducer {
         private String location;
         private java.math.BigDecimal qualityScore;
         private String notes;
+        private String nurseId;
+        private String department;
         private String messageId;
         private String correlationId;
         private String processingSource;
@@ -364,6 +353,12 @@ public class VitalKafkaProducer {
         
         public String getNotes() { return notes; }
         public void setNotes(String notes) { this.notes = notes; }
+        
+        public String getNurseId() { return nurseId; }
+        public void setNurseId(String nurseId) { this.nurseId = nurseId; }
+        
+        public String getDepartment() { return department; }
+        public void setDepartment(String department) { this.department = department; }
         
         public String getMessageId() { return messageId; }
         public void setMessageId(String messageId) { this.messageId = messageId; }

@@ -1,5 +1,5 @@
 server:
-  port: 8082
+  port: 8083
 
 spring:
   application:
@@ -83,6 +83,12 @@ management:
       show-details: always
     flyway:
       enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://zipkin:9411/api/v2/spans
   metrics:
     export:
       prometheus:
@@ -96,5 +102,20 @@ logging:
     org.springframework.kafka: DEBUG
     org.springframework.web: DEBUG
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "ts=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=${spring.application.name} traceId=%X{traceId:-} spanId=%X{spanId:-} logger=%logger{36} thread=%thread msg=%msg%n"
+    file: "ts=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=${spring.application.name} traceId=%X{traceId:-} spanId=%X{spanId:-} logger=%logger{36} thread=%thread msg=%msg%n"
+  file:
+    name: logs/${spring.application.name}.log
+  logback:
+    rollingpolicy:
+      max-file-size: 25MB
+      max-history: 14
+
+meditrack:
+  security:
+    auth:
+      enabled: ${MEDITRACK_AUTH_ENABLED:true}
+    jwt:
+      secret: ${JWT_SECRET:meditrack-ai-gateway-signing-key-2026-local-development}
+    service-jwt:
+      secret: ${SERVICE_JWT_SECRET:meditrack-ai-service-signing-key-2026-local-development}

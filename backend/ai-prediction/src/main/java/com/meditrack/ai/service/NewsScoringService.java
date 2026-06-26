@@ -96,8 +96,9 @@ public class NewsScoringService {
             if (vitals.getPreviousVitals() != null && !vitals.getPreviousVitals().isEmpty()) {
                 TrendScore trendScore = calculateTrendScore(vitals);
                 newsScore.setTrendScore(trendScore);
-                newsScore.setTotalScoreWithTrend(totalScore + trendScore.getScore());
-                newsScore.setRiskLevelWithTrend(determineRiskLevel(totalScore + trendScore.getScore()));
+                int trendAdjustment = trendScore.getTotalTrendScore();
+                newsScore.setTotalScoreWithTrend(totalScore + trendAdjustment);
+                newsScore.setRiskLevelWithTrend(determineRiskLevel(totalScore + trendAdjustment));
             }
             
             logger.info("NEWS score calculated: patientId={}, totalScore={}, riskLevel={}", 

@@ -67,6 +67,14 @@ public class VitalReading {
     @Size(max = 1000, message = "Notes must not exceed 1000 characters")
     private String notes;
     
+    @Column(name = "nurse_id", nullable = false, length = 100)
+    @NotBlank(message = "Nurse identifier is required")
+    private String nurseId;
+    
+    @Column(name = "department", nullable = false, length = 100)
+    @NotBlank(message = "Department is required")
+    private String department;
+    
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -122,6 +130,12 @@ public class VitalReading {
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
     
+    public String getNurseId() { return nurseId; }
+    public void setNurseId(String nurseId) { this.nurseId = nurseId; }
+    
+    public String getDepartment() { return department; }
+    public void setDepartment(String department) { this.department = department; }
+    
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     
@@ -148,6 +162,8 @@ public class VitalReading {
                ", unit='" + unit + '\'' +
                ", readingTimestamp=" + readingTimestamp +
                ", qualityScore=" + qualityScore +
+               ", nurseId='" + nurseId + '\'' +
+               ", department='" + department + '\'' +
                '}';
     }
     

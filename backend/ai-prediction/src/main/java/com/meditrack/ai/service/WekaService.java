@@ -272,9 +272,12 @@ public class WekaService {
                 for (String key : firstRow.keySet()) {
                     if (key.equals(targetAttribute)) {
                         // Target attribute (nominal)
-                        Set<Object> uniqueValues = new HashSet<>();
+                        Set<String> uniqueValues = new LinkedHashSet<>();
                         for (Map<String, Object> row : data) {
-                            uniqueValues.add(row.get(key));
+                            Object rowValue = row.get(key);
+                            if (rowValue != null) {
+                                uniqueValues.add(rowValue.toString());
+                            }
                         }
                         attributes.add(new Attribute(key, new ArrayList<>(uniqueValues)));
                     } else {

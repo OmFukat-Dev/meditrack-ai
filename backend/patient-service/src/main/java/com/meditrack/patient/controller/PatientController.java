@@ -3,6 +3,8 @@ package com.meditrack.patient.controller;
 import com.meditrack.patient.dto.PatientRequest;
 import com.meditrack.patient.dto.PatientResponse;
 import com.meditrack.patient.service.PatientService;
+import com.meditrack.patient.service.AuditService;
+import com.meditrack.patient.entity.AuditLog;
 import io.micrometer.core.annotation.Counted;
 import io.micrometer.core.annotation.Timed;
 import jakarta.validation.Valid;
@@ -10,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,13 +25,19 @@ public class PatientController {
     @Autowired
     private PatientService patientService;
     
+    @Autowired
+    private AuditService auditService;
+    
     // CRUD Operations
     @PostMapping
     @Counted(value = "patient.create", description = "Number of patients created")
     @Timed(value = "patient.create.time", description = "Time taken to create patient")
     public ResponseEntity<PatientResponse> createPatient(@Valid @RequestBody PatientRequest request,
+                                                 @RequestHeader(value = "X-User-Email", required = false) String userEmail,
                                                  @RequestHeader(value = "X-User-Id", required = false) String userId) {
-        PatientResponse response = patientService.createPatient(request, userId != null ? userId : "system");
+        String actor = firstNonBlank(userEmail, userId, "system");
+        PatientResponse response = patientService.createPatient(request, actor);
+        auditService.logAction(response.getId(), "CREATE", "Patient created", actor);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     
@@ -66,8 +75,28 @@ public class PatientController {
     @Timed(value = "patient.update.time", description = "Time taken to update patient")
     public ResponseEntity<PatientResponse> updatePatient(@PathVariable Long id,
                                                    @Valid @RequestBody PatientRequest request,
+                                                   @RequestHeader(value = "X-User-Email", required = false) String userEmail,
                                                    @RequestHeader(value = "X-User-Id", required = false) String userId) {
-        PatientResponse response = patientService.updatePatient(id, request, userId != null ? userId : "system");
+        String actor = firstNonBlank(userEmail, userId, "system");
+        PatientResponse response = patientService.updatePatient(id, request, actor);
+        auditService.logAction(id, "UPDATE", "Patient updated: " + request.getDepartment(), actor);
+        return ResponseEntity.ok(response);
+    }
+    
+    @PatchMapping("/{id}/condition")
+    @Counted(value = "patient.update.condition", description = "Number of patient condition updates")
+    @Timed(value = "patient.update.condition.time", description = "Time taken to update patient condition")
+    public ResponseEntity<PatientResponse> updatePatientCondition(@PathVariable Long id,
+                                                   @RequestBody java.util.Map<String, String> payload,
+                                                   @RequestHeader(value = "X-User-Email", required = false) String userEmail,
+                                                   @RequestHeader(value = "X-User-Id", required = false) String userId) {
+        String actor = firstNonBlank(userEmail, userId, "system");
+        String condition = payload.get("condition");
+        if (condition == null || condition.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        PatientResponse response = patientService.updatePatientCondition(id, condition, actor);
+        auditService.logAction(id, "UPDATE_CONDITION", "Patient condition updated to: " + condition, actor);
         return ResponseEntity.ok(response);
     }
     
@@ -206,9 +235,30 @@ public class PatientController {
         return ResponseEntity.ok(count);
     }
     
+    // Audit Endpoints
+    @GetMapping("/{id}/audit")
+    public ResponseEntity<List<AuditLog>> getPatientAuditLogs(@PathVariable Long id) {
+        List<AuditLog> logs = auditService.getLogsForPatient(id);
+        return ResponseEntity.ok(logs);
+    }
+    
     // Exception Handler
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(e.getMessage());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<String> handleAccessDeniedException(AccessDeniedException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+        return "system";
     }
 }

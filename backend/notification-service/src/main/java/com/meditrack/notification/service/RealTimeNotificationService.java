@@ -33,15 +33,22 @@ public class RealTimeNotificationService {
     @KafkaListener(topics = "patient-vitals", groupId = "notification-group")
     public void handleVitalUpdate(String vitalJson) {
         try {
+            logger.debug("Received Kafka message on patient-vitals: {}", vitalJson.substring(0, Math.min(100, vitalJson.length())));
+            
             VitalReadingEvent event = objectMapper.readValue(vitalJson, VitalReadingEvent.class);
             
-            logger.info("Real-time vital update: Patient={}, Type={}, Value={}", 
-                event.getPatientId(), event.getVitalType(), event.getValue());
+            logger.info("=== REAL-TIME VITAL UPDATE RECEIVED ===");
+            logger.info("  Patient ID: {}", event.getPatientId());
+            logger.info("  Vital Type: {}", event.getVitalType());
+            logger.info("  Value: {}", event.getValue());
+            logger.info("  Department: {}", event.getDepartment());
+            logger.info("  Timestamp: {}", event.getTimestamp());
             
             // Send to department-scoped dashboards
             sendToDepartmentDashboard(event, "doctor-vitals");
             sendToDepartmentDashboard(event, "nurse-vitals");
             sendToAdminDashboard(event);
+            logger.info("=== VITAL UPDATE BROADCAST COMPLETE ===");
             
         } catch (Exception e) {
             logger.error("Failed to process vital update: {}", e.getMessage(), e);
@@ -99,14 +106,22 @@ public class RealTimeNotificationService {
                 logger.warn("Skipping {} update without department for patient {}", topicPrefix, event.getPatientId());
                 return;
             }
-            String message = objectMapper.writeValueAsString(event);
-            messagingTemplate.convertAndSend("/topic/" + topicPrefix + "/department/" + normalizeTopicSegment(event.getDepartment()), message);
             
-            logger.debug("Sent {} update to department dashboard: Department={}, Patient={}",
-                topicPrefix, event.getDepartment(), event.getPatientId());
+            String normalizedDept = normalizeTopicSegment(event.getDepartment());
+            String topic = "/topic/" + topicPrefix + "/department/" + normalizedDept;
+            
+            logger.debug("Preparing to send {} update", topicPrefix);
+            logger.debug("  Original Department: '{}'", event.getDepartment());
+            logger.debug("  Normalized Department: '{}'", normalizedDept);
+            logger.debug("  Target Topic: {}", topic);
+            
+            String message = objectMapper.writeValueAsString(event);
+            messagingTemplate.convertAndSend(topic, message);
+            
+            logger.info("  ✓ Sent {} to {}", topicPrefix, topic);
             
         } catch (Exception e) {
-            logger.error("Failed to send department-scoped update: {}", e.getMessage(), e);
+            logger.error("Failed to send department-scoped update for {}: {}", topicPrefix, e.getMessage(), e);
         }
     }
     

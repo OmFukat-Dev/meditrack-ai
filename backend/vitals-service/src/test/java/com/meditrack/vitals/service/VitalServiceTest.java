@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -151,6 +152,51 @@ class VitalServiceTest {
         assertEquals(1, results.size());
         assertEquals("HEART_RATE", results.get(0).getVitalType());
         verify(redisCacheService).set(eq("latest_vital:1:HEART_RATE"), eq(heartRate), eq(3600L));
+    }
+
+    @Test
+    void getPatientVitalAnalysisBuildsRiskSummary() {
+        LocalDateTime since = LocalDateTime.now().minusHours(6);
+        VitalReading heartRate = new VitalReading();
+        heartRate.setPatient(patient);
+        heartRate.setVitalType("HEART_RATE");
+        heartRate.setValue(new BigDecimal("110"));
+        heartRate.setUnit("bpm");
+        heartRate.setReadingTimestamp(since.plusMinutes(5));
+
+        VitalReading temperature = new VitalReading();
+        temperature.setPatient(patient);
+        temperature.setVitalType("TEMPERATURE");
+        temperature.setValue(new BigDecimal("38.5"));
+        temperature.setUnit("C");
+        temperature.setReadingTimestamp(since.plusMinutes(10));
+
+        VitalReading spo2 = new VitalReading();
+        spo2.setPatient(patient);
+        spo2.setVitalType("SPO2");
+        spo2.setValue(new BigDecimal("91"));
+        spo2.setUnit("%");
+        spo2.setReadingTimestamp(since.plusMinutes(15));
+
+        when(redisCacheService.get(any(String.class), eq(VitalReading.class))).thenReturn(null);
+        when(vitalReadingRepository.findLatestByPatientIdAndVitalType(1L, "HEART_RATE")).thenReturn(heartRate);
+        when(vitalReadingRepository.findLatestByPatientIdAndVitalType(1L, "BLOOD_PRESSURE")).thenReturn(null);
+        when(vitalReadingRepository.findLatestByPatientIdAndVitalType(1L, "TEMPERATURE")).thenReturn(temperature);
+        when(vitalReadingRepository.findLatestByPatientIdAndVitalType(1L, "SPO2")).thenReturn(spo2);
+        when(vitalReadingRepository.findLatestByPatientIdAndVitalType(1L, "RESPIRATORY_RATE")).thenReturn(null);
+        when(vitalReadingRepository.findRecentByPatientId(1L, since)).thenReturn(List.of(heartRate, temperature, spo2));
+        when(vitalReadingRepository.findAbnormalReadingsByPatientId(1L, since)).thenReturn(List.of(heartRate, temperature, spo2));
+        when(vitalReadingRepository.findCriticalReadingsByPatientId(1L, since)).thenReturn(List.of(heartRate));
+
+        Map<String, Object> analysis = vitalService.getPatientVitalAnalysis(1L, since);
+
+        assertEquals(1L, analysis.get("patientId"));
+        assertEquals(3, analysis.get("recentReadingCount"));
+        assertEquals(3, analysis.get("abnormalCount"));
+        assertEquals(1, analysis.get("criticalCount"));
+        assertEquals("ALERT", analysis.get("overallStatus"));
+        assertEquals("CRITICAL", analysis.get("riskLevel"));
+        assertTrue(analysis.containsKey("trendSummary"));
     }
 
     private VitalReadingMessage baseMessage(String patientIdentifier, String vitalType, BigDecimal value, String unit) {

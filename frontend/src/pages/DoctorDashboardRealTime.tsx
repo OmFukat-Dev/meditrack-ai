@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Activity, ArrowRight, Bell, Download, FileText, HeartPulse,
   ShieldAlert, Users, X, FlaskConical, TrendingUp, Thermometer,
-  Wind, Droplets, CheckCircle2,
+  Droplets, CheckCircle2,
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -17,6 +17,17 @@ import { mockPatients, mockVitalSigns, mockUsers } from '../database/mockDatabas
 // ─── Types ────────────────────────────────────────────────────────────────────
 type TabKey = 'patients' | 'vitals' | 'predictions' | 'alerts' | 'timeline' | 'lab'
 type NotificationItem = { id: string; title: string; detail: string; timestamp: string; read: boolean }
+type RecentVitalReport = {
+  timestamp: string
+  time: string
+  heartRate?: number
+  systolic?: number
+  diastolic?: number
+  temperature?: number
+  spo2?: number
+  recordedBy?: string
+  department?: string
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function extractCollection<T>(value: unknown): T[] {
@@ -24,6 +35,65 @@ function extractCollection<T>(value: unknown): T[] {
   if (value && typeof value === 'object' && Array.isArray((value as any).content))
     return (value as any).content as T[]
   return []
+}
+
+function buildRecentVitalReports(vitals: any[]): RecentVitalReport[] {
+  if (!vitals || vitals.length === 0) return []
+
+  const rows = new Map<string, RecentVitalReport>()
+
+  for (const vital of vitals) {
+    const timestamp = new Date(vital.readingTimestamp || vital.timestamp || Date.now()).toISOString()
+    const key = `${timestamp}::${String(vital.recordedBy || vital.nurseId || vital.source || '')}`
+    const existing = rows.get(key) ?? {
+      timestamp,
+      time: new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }
+
+    const vitalType = String(vital.vitalType || '').toUpperCase()
+    const valueNumber = Number(vital.value ?? vital.heartRate ?? vital.temperature ?? vital.oxygenSaturation ?? vital.spo2 ?? 0)
+
+    if (vitalType === 'HEART_RATE' || vital.heartRate !== undefined) {
+      existing.heartRate = Number(vital.heartRate ?? valueNumber)
+    }
+
+    if (vitalType === 'BLOOD_PRESSURE' || vital.systolic !== undefined || vital.diastolic !== undefined) {
+      existing.systolic = Number(vital.systolic ?? vital.value ?? existing.systolic ?? 0)
+      existing.diastolic = Number(vital.diastolic ?? vital.value ?? existing.diastolic ?? 0)
+    }
+
+    if (vitalType === 'TEMPERATURE' || vital.temperature !== undefined || vital.temp !== undefined) {
+      existing.temperature = Number(vital.temperature ?? vital.temp ?? valueNumber)
+    }
+
+    if (vitalType === 'SPO2' || vital.oxygenSaturation !== undefined || vital.spo2 !== undefined) {
+      existing.spo2 = Number(vital.oxygenSaturation ?? vital.spo2 ?? valueNumber)
+    }
+
+    if (!existing.recordedBy && (vital.recordedBy || vital.nurseId || vital.source)) {
+      existing.recordedBy = String(vital.recordedBy || vital.nurseId || vital.source)
+    }
+
+    if (!existing.department && (vital.department || vital.location)) {
+      existing.department = String(vital.department || vital.location)
+    }
+
+    rows.set(key, existing)
+  }
+
+  return Array.from(rows.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+}
+
+function buildVitalTrendFromReports(reports: RecentVitalReport[]) {
+  if (!reports || reports.length === 0) return []
+  return reports.map((report) => ({
+    time: report.time,
+    hr: report.heartRate,
+    systolic: report.systolic,
+    diastolic: report.diastolic,
+    temp: report.temperature,
+    spo2: report.spo2,
+  }))
 }
 
 function getConditionColor(c: string) {
@@ -51,19 +121,6 @@ function buildVitalTrendData(patientId: string) {
     diastolic: v.bloodPressure.diastolic,
     temp: v.temperature,
     spo2: v.oxygenSaturation,
-  }))
-}
-
-function buildVitalTrendFromVitals(vitals: any[]) {
-  if (!vitals || vitals.length === 0) return []
-  const sorted = [...vitals].sort((a, b) => new Date(a.readingTimestamp || a.timestamp || 0).getTime() - new Date(b.readingTimestamp || b.timestamp || 0).getTime())
-  return sorted.map(v => ({
-    time: new Date(v.readingTimestamp || v.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    hr: Number(v.heartRate ?? v.value ?? 0),
-    systolic: Number(v.systolic ?? v.bloodPressure?.systolic ?? 0),
-    diastolic: Number(v.diastolic ?? v.bloodPressure?.diastolic ?? 0),
-    temp: Number(v.temperature ?? v.temp ?? 0),
-    spo2: Number(v.oxygenSaturation ?? v.spo2 ?? 0),
   }))
 }
 
@@ -122,10 +179,11 @@ export default function DoctorDashboardRealTime() {
   const [patientVitals, setPatientVitals] = useState<any[]>([])
   const [patientAlerts, setPatientAlerts] = useState<any[]>([])
   const [patientPredictions, setPatientPredictions] = useState<any[]>([])
+  const [patientAnalysis, setPatientAnalysis] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const seenVitalEventIds = useRef<Set<string>>(new Set())
   const [activeTab, setActiveTab] = useState<TabKey>('patients')
-  const [realTimeUpdates, setRealTimeUpdates] = useState<any[]>([])
   const [wsConnected, setWsConnected] = useState(false)
   const [isDownloadingReport, setIsDownloadingReport] = useState(false)
 
@@ -162,35 +220,48 @@ export default function DoctorDashboardRealTime() {
   }, [user])
 
   useEffect(() => {
+    if (!selectedPatient) {
+      setPatientAnalysis(null)
+      return
+    }
+    void loadPatientAnalysis(selectedPatient.id)
+  }, [selectedPatient])
+
+  useEffect(() => {
     if (!selectedPatient || !wsConnected) return
     const dept = selectedPatient.department || user?.department || 'General'
-    wsService.subscribeToDoctorVitals(dept, (d: any) => {
+
+    const handleVitalEvent = (d: any) => {
       if (String(d.patientId) !== String(selectedPatient.id)) return
+      const eventId = d.eventId || `${d.patientId}-${d.vitalType}-${d.timestamp}-${d.value || d.systolic || d.diastolic}`
+      if (seenVitalEventIds.current.has(eventId)) return
+      seenVitalEventIds.current.add(eventId)
       setPatientVitals(prev => [d, ...prev.slice(0, 49)])
-      addRTU('vital', d)
-    })
+    }
+
+    wsService.subscribeToDoctorVitals(dept, handleVitalEvent)
+    wsService.subscribeToNurseVitals(dept, handleVitalEvent)
     wsService.subscribeToDoctorPredictions(dept, (d: any) => {
       if (String(d.patientId) !== String(selectedPatient.id)) return
       setPatientPredictions(prev => [d, ...prev.slice(0, 49)])
-      addRTU('prediction', d)
     })
     wsService.subscribeToDoctorAlerts(dept, (d: any) => {
       if (String(d.patientId) !== String(selectedPatient.id)) return
       setPatientAlerts(prev => [d, ...prev.slice(0, 49)])
-      addRTU('alert', d)
     })
-  }, [selectedPatient, wsConnected])
+
+    return () => {
+      wsService.unsubscribe(`/topic/doctor-vitals/department/${dept.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-')}`)
+      wsService.unsubscribe(`/topic/nurse-vitals/department/${dept.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-')}`)
+      wsService.unsubscribe(`/topic/doctor-predictions/department/${dept.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-')}`)
+      wsService.unsubscribe(`/topic/doctor-alerts/department/${dept.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-')}`)
+      seenVitalEventIds.current.clear()
+    }
+  }, [selectedPatient, wsConnected, user?.department])
 
   async function connectWebSocket() {
     try { await wsService.connect(); setWsConnected(true) }
     catch { /* offline mode */ }
-  }
-
-  function addRTU(type: string, data: any) {
-    setRealTimeUpdates(prev => [
-      { type, data, timestamp: new Date(), id: Math.random().toString(36).slice(2) },
-      ...prev.slice(0, 19),
-    ])
   }
 
   async function loadAssignedPatients() {
@@ -240,10 +311,19 @@ export default function DoctorDashboardRealTime() {
     setIsLoading(false)
   }
 
+  async function loadPatientAnalysis(patientId: string | number) {
+    try {
+      const res = await vitalsApi.getSummary(patientId)
+      setPatientAnalysis(res.data ?? null)
+    } catch {
+      setPatientAnalysis(null)
+    }
+  }
+
   async function handlePatientSelect(patient: any) {
     setSelectedPatient(patient)
     setActiveTab('vitals')
-    setPatientVitals([]); setPatientAlerts([]); setPatientPredictions([])
+    setPatientVitals([]); setPatientAlerts([]); setPatientPredictions([]); setPatientAnalysis(null)
     // Load real vitals
     try {
       const res = await vitalsApi.getPatientReadings(patient.id, { page: 0, size: 50 })
@@ -333,9 +413,12 @@ export default function DoctorDashboardRealTime() {
                 new Date(a.timestamp || a.readingTimestamp || 0).getTime(),
     ), [patientAlerts, patientPredictions, patientVitals])
 
+  const recentVitalReports = useMemo(() => buildRecentVitalReports(patientVitals), [patientVitals])
   const vitalTrendData = useMemo(() =>
-    selectedPatient ? (patientVitals && patientVitals.length > 0 ? buildVitalTrendFromVitals(patientVitals) : buildVitalTrendData(selectedPatient.id)) : [],
-    [selectedPatient, patientVitals])
+    selectedPatient ? (recentVitalReports.length > 0 ? buildVitalTrendFromReports(recentVitalReports) : buildVitalTrendData(selectedPatient.id)) : [],
+    [selectedPatient, recentVitalReports])
+
+  const analysisTrendItems = useMemo(() => patientAnalysis?.trendSummary?.items ?? [], [patientAnalysis])
 
   const labData = useMemo(() => {
     const dept = user?.department || selectedPatient?.department || 'Cardiology'
@@ -554,6 +637,30 @@ export default function DoctorDashboardRealTime() {
                 <p className="text-sm text-dark-300 mt-1">Historical bedside readings rendered as trend charts.</p>
               </div>
 
+              <div className="rounded-3xl border border-white/10 bg-dark-900/70 p-5">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.25em] text-dark-400">Clinical insight</p>
+                    <h3 className="mt-1 text-xl font-semibold text-white">{patientAnalysis?.overallStatus || 'STABLE'}</h3>
+                    <p className="mt-1 text-sm text-dark-300">Risk {patientAnalysis?.riskLevel || 'LOW'} · {patientAnalysis?.criticalCount ?? 0} critical · {patientAnalysis?.abnormalCount ?? 0} abnormal in the recent window.</p>
+                  </div>
+                  <span className={`rounded-full border px-3 py-1 text-sm font-semibold ${patientAnalysis?.overallStatus === 'ALERT' ? 'border-error-500/30 bg-error-500/10 text-error-300' : 'border-success-500/30 bg-success-500/10 text-success-300'}`}>
+                    {patientAnalysis?.overallStatus || 'STABLE'}
+                  </span>
+                </div>
+                {analysisTrendItems.length > 0 && (
+                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {analysisTrendItems.map((item: any) => (
+                      <div key={item.vitalType} className="rounded-2xl border border-white/10 bg-dark-900/60 p-3">
+                        <p className="text-xs uppercase tracking-[0.2em] text-dark-400">{item.vitalType}</p>
+                        <p className="mt-2 text-sm font-semibold text-white">{item.direction} · Δ {item.delta}</p>
+                        <p className="text-xs text-dark-400">{item.startValue} → {item.latestValue}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {vitalTrendData.length === 0 ? (
                 <p className="text-dark-400">No vital data available for this patient.</p>
               ) : (
@@ -647,6 +754,44 @@ export default function DoctorDashboardRealTime() {
                         </p>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {recentVitalReports.length > 0 && (
+                <div className="mt-8 rounded-3xl border border-white/10 bg-dark-900/70 p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Recent Vital Records</h3>
+                      <p className="text-sm text-dark-400">Nurse-submitted vitals grouped by timestamp and clinician.</p>
+                    </div>
+                    <span className="text-xs text-dark-400">Showing {Math.min(recentVitalReports.length, 10)} recent reports</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-white/5 text-left text-sm">
+                      <thead className="bg-white/5 text-xs text-dark-300 uppercase tracking-[0.2em]">
+                        <tr>
+                          <th className="px-4 py-3">Time</th>
+                          <th className="px-4 py-3">Heart Rate</th>
+                          <th className="px-4 py-3">Blood Pressure</th>
+                          <th className="px-4 py-3">Temperature</th>
+                          <th className="px-4 py-3">SpO2</th>
+                          <th className="px-4 py-3">Clinician</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 bg-dark-950 text-dark-200">
+                        {recentVitalReports.slice(0, 10).map((report, index) => (
+                          <tr key={`${report.timestamp}-${report.recordedBy}-${index}`} className="hover:bg-white/5 transition-all">
+                            <td className="px-4 py-3 font-mono text-xs">{report.time}</td>
+                            <td className="px-4 py-3 text-red-400">{report.heartRate ?? '—'} bpm</td>
+                            <td className="px-4 py-3 text-primary-400">{report.systolic != null && report.diastolic != null ? `${report.systolic}/${report.diastolic}` : '—'}</td>
+                            <td className="px-4 py-3 text-warning-400">{report.temperature != null ? `${report.temperature}°F` : '—'}</td>
+                            <td className="px-4 py-3 text-success-400">{report.spo2 != null ? `${report.spo2}%` : '—'}</td>
+                            <td className="px-4 py-3 text-xs text-dark-300">{report.recordedBy || report.department || 'Nurse'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}

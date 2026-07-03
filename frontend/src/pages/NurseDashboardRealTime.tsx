@@ -2,8 +2,70 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { AuthService } from '../auth/AuthService'
 import { User } from '../types/user'
-import { GATEWAY_URL } from '../services/api'
+import { vitalsApi } from '../services/api'
 import WebSocketService from '../services/websocketService'
+
+function buildVitalPayloadsList({
+  patientIdentifier,
+  patientId,
+  heartRate,
+  systolic,
+  diastolic,
+  oxygenSaturation,
+  respiratoryRate,
+  temperature,
+  nurseId,
+  department,
+  notes,
+}: {
+  patientIdentifier: string;
+  patientId: string | number;
+  heartRate: number;
+  systolic: number;
+  diastolic: number;
+  oxygenSaturation: number;
+  respiratoryRate: number;
+  temperature: number;
+  nurseId: string;
+  department: string;
+  notes: string;
+}) {
+  const common = {
+    patientIdentifier,
+    patientId,
+    readingTimestamp: new Date().toISOString(),
+    source: 'MANUAL',
+    location: department,
+    department,
+    notes: notes || `Recorded by ${nurseId}`,
+    qualityScore: 0.95,
+    nurseId,
+  }
+
+  const payloads: any[] = []
+
+  if (heartRate) {
+    payloads.push({ ...common, vitalType: 'HEART_RATE', value: heartRate, unit: 'bpm' })
+  }
+
+  if (systolic && diastolic) {
+    payloads.push({ ...common, vitalType: 'BLOOD_PRESSURE', value: systolic, systolic, diastolic, unit: 'mmHg' })
+  }
+
+  if (oxygenSaturation) {
+    payloads.push({ ...common, vitalType: 'SPO2', value: oxygenSaturation, unit: '%' })
+  }
+
+  if (respiratoryRate) {
+    payloads.push({ ...common, vitalType: 'RESPIRATORY_RATE', value: respiratoryRate, unit: 'bpm' })
+  }
+
+  if (temperature) {
+    payloads.push({ ...common, vitalType: 'TEMPERATURE', value: temperature, unit: 'F' })
+  }
+
+  return payloads
+}
 
 export default function NurseDashboardRealTime() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -22,6 +84,7 @@ export default function NurseDashboardRealTime() {
   })
   const [recentReadings, setRecentReadings] = useState<any[]>([])
   const [alerts, setAlerts] = useState<any[]>([])
+  const [patientAnalysis, setPatientAnalysis] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'patients' | 'vitals' | 'history'>('patients')
@@ -64,8 +127,16 @@ export default function NurseDashboardRealTime() {
 
   // Subscribe to real-time updates when patient is selected
   useEffect(() => {
+    if (selectedPatient) {
+      void loadPatientAnalysis(selectedPatient.id)
+    } else {
+      setPatientAnalysis(null)
+    }
+  }, [selectedPatient])
+
+  useEffect(() => {
     if (selectedPatient && wsConnected) {
-      const department = selectedPatient.department || currentUser?.department || currentUser?.departmentName
+      const department = selectedPatient.department || currentUser?.departmentName
       if (!department) {
         setError('Department is required for real-time updates')
         return
@@ -91,7 +162,7 @@ export default function NurseDashboardRealTime() {
 
     return () => {
       if (selectedPatient) {
-        const department = selectedPatient.department || currentUser?.department || currentUser?.departmentName
+        const department = selectedPatient.department || currentUser?.departmentName
         if (!department) return
         const topicDepartment = department.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-')
         wsService.unsubscribe(`/topic/nurse-vitals/department/${topicDepartment}`)
@@ -99,6 +170,15 @@ export default function NurseDashboardRealTime() {
       }
     }
   }, [selectedPatient, wsConnected, currentUser])
+
+  const loadPatientAnalysis = async (patientId: string | number) => {
+    try {
+      const response = await vitalsApi.getSummary(patientId)
+      setPatientAnalysis(response.data ?? null)
+    } catch {
+      setPatientAnalysis(null)
+    }
+  }
 
   const loadAssignedPatients = async (user: User | null) => {
     setIsLoading(true)
@@ -150,36 +230,41 @@ export default function NurseDashboardRealTime() {
     }
 
     try {
-      const vitalReading = {
+      const payloads = buildVitalPayloadsList({
+        patientIdentifier: selectedPatient.patientIdentifier || `PT-${selectedPatient.id}`,
         patientId: selectedPatient.id,
-        nurseId: currentUser?.id,
-        heartRate: parseInt(vitalsForm.heartRate),
-        systolicBp: parseInt(vitalsForm.systolicBp),
-        diastolicBp: parseInt(vitalsForm.diastolicBp),
-        oxygenSaturation: parseInt(vitalsForm.oxygenSaturation),
-        respiratoryRate: parseInt(vitalsForm.respiratoryRate),
-        temperature: parseFloat(vitalsForm.temperature),
-        glucose: vitalsForm.glucose ? parseFloat(vitalsForm.glucose) : null,
-        hemoglobin: vitalsForm.hemoglobin ? parseFloat(vitalsForm.hemoglobin) : null,
+        heartRate: parseInt(vitalsForm.heartRate, 10) || 0,
+        systolic: parseInt(vitalsForm.systolicBp, 10) || 0,
+        diastolic: parseInt(vitalsForm.diastolicBp, 10) || 0,
+        oxygenSaturation: parseInt(vitalsForm.oxygenSaturation, 10) || 0,
+        respiratoryRate: parseInt(vitalsForm.respiratoryRate, 10) || 0,
+        temperature: parseFloat(vitalsForm.temperature) || 0,
+        nurseId: currentUser?.id || currentUser?.email || 'nurse',
+        department: selectedPatient.department || currentUser?.departmentName || 'General',
         notes: vitalsForm.notes,
-        timestamp: new Date().toISOString()
-      }
-
-      // Send to backend
-      const response = await fetch(`${GATEWAY_URL}/vitals`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('sessionToken')}`
-        },
-        body: JSON.stringify(vitalReading)
       })
 
-      if (response.ok) {
-        // Add to recent readings
-        setRecentReadings(prev => [vitalReading, ...prev.slice(0, 49)])
-        
-        // Reset form
+      if (payloads.length === 0) {
+        setError('Please enter at least one vital value')
+        return
+      }
+
+      const responses = await Promise.all(payloads.map((payload) => vitalsApi.createVital(payload)))
+      const success = responses.every((response) => response.status >= 200 && response.status < 300)
+
+      if (success) {
+        setRecentReadings(prev => [{
+          timestamp: new Date().toISOString(),
+          heartRate: parseInt(vitalsForm.heartRate, 10) || null,
+          systolicBp: parseInt(vitalsForm.systolicBp, 10) || null,
+          diastolicBp: parseInt(vitalsForm.diastolicBp, 10) || null,
+          oxygenSaturation: parseInt(vitalsForm.oxygenSaturation, 10) || null,
+          respiratoryRate: parseInt(vitalsForm.respiratoryRate, 10) || null,
+          temperature: parseFloat(vitalsForm.temperature) || null,
+          notes: vitalsForm.notes,
+          patientId: selectedPatient.id,
+        }, ...prev.slice(0, 49)])
+
         setVitalsForm({
           heartRate: '',
           systolicBp: '',
@@ -191,10 +276,9 @@ export default function NurseDashboardRealTime() {
           hemoglobin: '',
           notes: ''
         })
-        
+
         setShowVitalsModal(false)
-        
-        // Show success message
+        void loadPatientAnalysis(selectedPatient.id)
         alert('Vitals recorded successfully')
       } else {
         setError('Failed to record vitals')
@@ -272,6 +356,34 @@ export default function NurseDashboardRealTime() {
                   <span>{alert.message}</span>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {selectedPatient && (
+          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-5 mb-6">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-white">Care focus for {selectedPatient.firstName} {selectedPatient.lastName}</h3>
+                <p className="text-white/70 text-sm">{patientAnalysis?.overallStatus || 'STABLE'} · Risk {patientAnalysis?.riskLevel || 'LOW'}</p>
+              </div>
+              <div className={`px-3 py-1 rounded-full text-sm ${patientAnalysis?.overallStatus === 'ALERT' ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>
+                {patientAnalysis?.overallStatus || 'STABLE'}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+              <div className="bg-white/10 rounded-lg p-3">
+                <p className="text-white/60 text-xs uppercase tracking-wider">Critical</p>
+                <p className="text-xl font-semibold text-white">{patientAnalysis?.criticalCount ?? 0}</p>
+              </div>
+              <div className="bg-white/10 rounded-lg p-3">
+                <p className="text-white/60 text-xs uppercase tracking-wider">Abnormal</p>
+                <p className="text-xl font-semibold text-white">{patientAnalysis?.abnormalCount ?? 0}</p>
+              </div>
+              <div className="bg-white/10 rounded-lg p-3">
+                <p className="text-white/60 text-xs uppercase tracking-wider">Recent readings</p>
+                <p className="text-xl font-semibold text-white">{patientAnalysis?.recentReadingCount ?? 0}</p>
+              </div>
             </div>
           </div>
         )}

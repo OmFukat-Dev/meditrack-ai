@@ -12,12 +12,50 @@ const api = axios.create({
   },
 });
 
+function getStoredAuthContext() {
+  try {
+    const rawCurrentUser = localStorage.getItem('currentUser');
+    if (rawCurrentUser) {
+      return JSON.parse(rawCurrentUser);
+    }
+  } catch {
+    // Ignore invalid local storage payloads
+  }
+
+  try {
+    const rawAuth = localStorage.getItem('meditrack_auth');
+    if (rawAuth) {
+      return JSON.parse(rawAuth);
+    }
+  } catch {
+    // Ignore invalid local storage payloads
+  }
+
+  return null;
+}
+
 // Add JWT Interceptor
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('token') ?? localStorage.getItem('sessionToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  const authContext = getStoredAuthContext();
+  const role = authContext?.roleName ?? authContext?.role;
+  if (role) {
+    config.headers['X-User-Role'] = String(role);
+  }
+
+  const department = authContext?.departmentName ?? authContext?.department;
+  if (department) {
+    config.headers['X-User-Department'] = String(department);
+  }
+
+  if (authContext?.id) {
+    config.headers['X-User-Id'] = String(authContext.id);
+  }
+
   return config;
 });
 

@@ -343,6 +343,7 @@ public class VitalController {
     @Counted(value = "vital.api.read.summary", description = "Number of vital summaries read via API")
     @Timed(value = "vital.api.read.summary.time", description = "Time taken to read vital summary via API")
     public ResponseEntity<?> getVitalSummary(@PathVariable Long patientId,
+                                             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime since,
                                              @RequestHeader(value = "X-User-Role", required = false) String userRole,
                                              @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
         try {
@@ -362,15 +363,7 @@ public class VitalController {
                     ));
             }
             
-            List<VitalReading> latestVitals = vitalService.getLatestVitals(patientId);
-            
-            // Create summary
-            Map<String, Object> summary = Map.of(
-                "patientId", patientId,
-                "latestVitals", latestVitals,
-                "timestamp", LocalDateTime.now(),
-                "vitalCount", latestVitals.size()
-            );
+            Map<String, Object> summary = vitalService.getPatientVitalAnalysis(patientId, since);
             
             return ResponseEntity.ok(summary);
             
@@ -389,6 +382,49 @@ public class VitalController {
         }
     }
     
+    // Get richer vital analysis for patient
+    @GetMapping("/patient/{patientId}/analysis")
+    @Counted(value = "vital.api.read.analysis", description = "Number of vital analyses read via API")
+    @Timed(value = "vital.api.read.analysis.time", description = "Time taken to read vital analysis via API")
+    public ResponseEntity<?> getPatientVitalAnalysis(@PathVariable Long patientId,
+                                                     @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime since,
+                                                     @RequestHeader(value = "X-User-Role", required = false) String userRole,
+                                                     @RequestHeader(value = "X-User-Department", required = false) String userDepartment) {
+        try {
+            if (!checkDepartmentAccess(patientId, userRole, userDepartment)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Access Denied", "message", "You are not authorized to view vitals for patients in other departments"));
+            }
+
+            RateLimitResult rateLimitResult = rateLimitingService.checkPatientRateLimit(String.valueOf(patientId));
+
+            if (!rateLimitResult.isAllowed()) {
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of(
+                        "error", "Rate limit exceeded",
+                        "message", rateLimitResult.getUserMessage(),
+                        "resetTime", rateLimitResult.getResetTime()
+                    ));
+            }
+
+            Map<String, Object> analysis = vitalService.getPatientVitalAnalysis(patientId, since);
+            return ResponseEntity.ok(analysis);
+
+        } catch (Exception e) {
+            logger.error("Error getting vital analysis for patient {}: {}", patientId, e.getMessage(), e);
+
+            ErrorHandlerService.ErrorResult errorResult = errorHandlerService.handleError(
+                e, "READ_VITAL_ANALYSIS", Map.of("patientId", patientId));
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of(
+                    "error", errorResult.getErrorCategory(),
+                    "message", errorResult.getUserMessage(),
+                    "shouldRetry", errorResult.shouldRetry()
+                ));
+        }
+    }
+
     // Health check endpoint
     @GetMapping("/health")
     @Counted(value = "vital.api.health", description = "Number of health checks via API")

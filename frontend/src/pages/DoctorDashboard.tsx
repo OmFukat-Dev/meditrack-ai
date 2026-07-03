@@ -74,6 +74,7 @@ export default function DoctorDashboard() {
   const [selectedPatientId, setSelectedPatientId] = useState<string>('');
   const [readings, setReadings] = useState<VitalReading[]>([]);
   const [latestVitals, setLatestVitals] = useState<SummaryVital[]>([]);
+  const [analysis, setAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [patientLoading, setPatientLoading] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -121,10 +122,12 @@ export default function DoctorDashboard() {
 
       setReadings(extractCollection<VitalReading>(readingResponse.data));
       setLatestVitals(extractSummary(summaryResponse.data));
+      setAnalysis(summaryResponse.data || null);
     } catch (error) {
       console.error('Unable to load patient vitals', error);
       setReadings([]);
       setLatestVitals([]);
+      setAnalysis(null);
     } finally {
       setPatientLoading(false);
     }
@@ -213,6 +216,21 @@ export default function DoctorDashboard() {
                 <MetricCard label="Critical Readings" value={criticalCount} />
                 <MetricCard label="Abnormal Readings" value={abnormalCount} />
                 <MetricCard label="Charts Loaded" value={chartData.length} />
+              </div>
+
+              <div className="glass-panel p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.2em] text-dark-500">Clinical insight</div>
+                  <div className="text-white font-semibold mt-1">
+                    {(analysis?.overallStatus || 'STABLE').toLowerCase().replace(/^./, (char: string) => char.toUpperCase())}
+                  </div>
+                  <div className="text-sm text-dark-400 mt-1">
+                    Risk {analysis?.riskLevel || 'LOW'} · {analysis?.criticalCount ?? 0} critical · {analysis?.abnormalCount ?? 0} abnormal in the recent window.
+                  </div>
+                </div>
+                <div className={`px-3 py-1 rounded-full text-sm ${analysis?.overallStatus === 'ALERT' ? 'bg-error-500/10 text-error-300' : 'bg-success-500/10 text-success-300'}`}>
+                  {analysis?.overallStatus || 'STABLE'}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

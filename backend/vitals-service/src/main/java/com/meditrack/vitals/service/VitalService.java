@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map;
@@ -460,6 +461,30 @@ public class VitalService {
         }
     }
     
+    public Map<String, Object> getPatientVitalAnalysis(Long patientId, LocalDateTime since) {
+        LocalDateTime effectiveSince = since != null ? since : LocalDateTime.now().minusHours(24);
+
+        List<VitalReading> recentReadings = vitalReadingRepository.findRecentByPatientId(patientId, effectiveSince);
+        List<VitalReading> abnormalReadings = vitalReadingRepository.findAbnormalReadingsByPatientId(patientId, effectiveSince);
+        List<VitalReading> criticalReadings = vitalReadingRepository.findCriticalReadingsByPatientId(patientId, effectiveSince);
+        List<VitalReading> latestVitals = getLatestVitals(patientId);
+
+        Map<String, Object> analysis = new LinkedHashMap<>();
+        analysis.put("patientId", patientId);
+        analysis.put("generatedAt", LocalDateTime.now());
+        analysis.put("windowStart", effectiveSince);
+        analysis.put("latestVitals", latestVitals);
+        analysis.put("recentReadingCount", recentReadings.size());
+        analysis.put("abnormalCount", abnormalReadings.size());
+        analysis.put("criticalCount", criticalReadings.size());
+        analysis.put("overallStatus", determineOverallStatus(abnormalReadings.size(), criticalReadings.size(), recentReadings.size()));
+        analysis.put("riskLevel", determineRiskLevel(abnormalReadings.size(), criticalReadings.size()));
+        analysis.put("trendSummary", buildTrendSummary(recentReadings));
+        analysis.put("vitalCount", latestVitals.size());
+
+        return analysis;
+    }
+
     public List<VitalReading> getLatestVitals(Long patientId) {
         List<VitalReading> latestVitals = new ArrayList<>();
         
@@ -479,6 +504,71 @@ public class VitalService {
         }
         
         return latestVitals;
+    }
+
+    private String determineOverallStatus(int abnormalCount, int criticalCount, int recentReadingCount) {
+        if (criticalCount > 0) {
+            return "ALERT";
+        }
+        if (abnormalCount > 0) {
+            return recentReadingCount > 0 ? "WATCH" : "NO_DATA";
+        }
+        return recentReadingCount > 0 ? "STABLE" : "NO_DATA";
+    }
+
+    private String determineRiskLevel(int abnormalCount, int criticalCount) {
+        if (criticalCount > 0) {
+            return "CRITICAL";
+        }
+        if (abnormalCount >= 3) {
+            return "HIGH";
+        }
+        if (abnormalCount > 0) {
+            return "MEDIUM";
+        }
+        return "LOW";
+    }
+
+    private Map<String, Object> buildTrendSummary(List<VitalReading> recentReadings) {
+        List<Map<String, Object>> items = new ArrayList<>();
+        String[] vitalTypes = {"HEART_RATE", "BLOOD_PRESSURE", "TEMPERATURE", "SPO2", "RESPIRATORY_RATE"};
+
+        for (String vitalType : vitalTypes) {
+            List<VitalReading> typeReadings = recentReadings.stream()
+                .filter(reading -> vitalType.equals(reading.getVitalType()))
+                .sorted(Comparator.comparing(VitalReading::getReadingTimestamp, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+
+            if (typeReadings.size() < 2) {
+                continue;
+            }
+
+            BigDecimal firstValue = getTrendValue(typeReadings.get(0));
+            BigDecimal latestValue = getTrendValue(typeReadings.get(typeReadings.size() - 1));
+            BigDecimal delta = latestValue.subtract(firstValue);
+            String direction = delta.compareTo(BigDecimal.ZERO) > 0 ? "INCREASING" : delta.compareTo(BigDecimal.ZERO) < 0 ? "DECREASING" : "STABLE";
+
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("vitalType", vitalType);
+            item.put("startValue", firstValue);
+            item.put("latestValue", latestValue);
+            item.put("delta", delta);
+            item.put("direction", direction);
+            items.add(item);
+        }
+
+        Map<String, Object> trendSummary = new LinkedHashMap<>();
+        trendSummary.put("items", items);
+        trendSummary.put("hasTrendData", !items.isEmpty());
+        trendSummary.put("summary", items.isEmpty() ? "Insufficient recent data for trend analysis" : "Trend analysis available for recent measurements");
+        return trendSummary;
+    }
+
+    private BigDecimal getTrendValue(VitalReading reading) {
+        if ("BLOOD_PRESSURE".equals(reading.getVitalType()) && reading.getSystolic() != null) {
+            return reading.getSystolic();
+        }
+        return reading.getValue() != null ? reading.getValue() : BigDecimal.ZERO;
     }
     
     public List<VitalReading> getAbnormalReadings(Long patientId, LocalDateTime since) {

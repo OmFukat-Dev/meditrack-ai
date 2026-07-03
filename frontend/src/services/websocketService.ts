@@ -47,12 +47,17 @@ export class WebSocketService {
         return
       }
 
-      const baseUrl = import.meta.env.VITE_DASHBOARD_WS_URL ?? 'http://localhost:8085/ws-alerts'
+      // Primary: notification service (port 8086), Fallback: alert service (port 8085)
+      const baseUrl = import.meta.env.VITE_DASHBOARD_WS_URL ?? 'http://localhost:8086/ws-alerts'
       const socketUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
 
       this.stompClient = new Client({
         webSocketFactory: () => new SockJS(socketUrl),
-        debug: (str) => console.log('STOMP Debug:', str),
+        debug: (str) => {
+          if (str.includes('ERROR') || str.includes('Connection')) {
+            console.log('STOMP Debug:', str)
+          }
+        },
         reconnectDelay: 5000,
         heartbeatIncoming: 4000,
         heartbeatOutgoing: 4000,

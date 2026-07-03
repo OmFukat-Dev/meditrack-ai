@@ -3,7 +3,6 @@ import { useAuth } from './context/AuthContext';
 import SignIn from './pages/SignIn';
 import AdminDashboardPro from './pages/AdminDashboardPro';
 import DoctorDashboardRealTime from './pages/DoctorDashboardRealTime';
-import NurseDashboardAPI from './pages/NurseDashboardAPI';
 import NurseDashboardRealTime from './pages/NurseDashboardRealTime';
 import ViewerDashboard from './pages/ViewerDashboard';
 import { ProtectedRoute } from './components/ProtectedRoute';

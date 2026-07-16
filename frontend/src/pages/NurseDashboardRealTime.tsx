@@ -5,6 +5,9 @@ import { User } from '../types/user'
 import { vitalsApi } from '../services/api'
 import WebSocketService from '../services/websocketService'
 
+const LOCAL_NURSE_VITAL_EVENT = 'meditrack:nurse-vital'
+const LOCAL_NURSE_VITAL_STORAGE_KEY = 'meditrack:last-nurse-vital'
+
 function buildVitalPayloadsList({
   patientIdentifier,
   patientId,
@@ -253,6 +256,24 @@ export default function NurseDashboardRealTime() {
       const success = responses.every((response) => response.status >= 200 && response.status < 300)
 
       if (success) {
+        const localEvents = payloads.map((payload) => ({
+          eventId: `nurse-local-${payload.patientId}-${payload.vitalType}-${Date.now()}`,
+          eventType: 'VITAL_RECORDED',
+          timestamp: payload.readingTimestamp,
+          patientId: payload.patientId,
+          vitalType: payload.vitalType,
+          value: payload.value,
+          unit: payload.unit,
+          systolic: payload.systolic,
+          diastolic: payload.diastolic,
+          department: payload.department,
+          nurseId: payload.nurseId,
+          createdBy: currentUser?.id || payload.nurseId,
+          role: 'NURSE',
+          message: payload.notes,
+          recordedBy: currentUser?.name || payload.nurseId,
+        }))
+
         setRecentReadings(prev => [{
           timestamp: new Date().toISOString(),
           heartRate: parseInt(vitalsForm.heartRate, 10) || null,
@@ -264,6 +285,13 @@ export default function NurseDashboardRealTime() {
           notes: vitalsForm.notes,
           patientId: selectedPatient.id,
         }, ...prev.slice(0, 49)])
+
+        try {
+          window.localStorage.setItem(LOCAL_NURSE_VITAL_STORAGE_KEY, JSON.stringify(localEvents[localEvents.length - 1]))
+        } catch {
+          // ignore local storage failures
+        }
+        window.dispatchEvent(new CustomEvent(LOCAL_NURSE_VITAL_EVENT, { detail: localEvents }))
 
         setVitalsForm({
           heartRate: '',

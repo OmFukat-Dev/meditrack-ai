@@ -119,10 +119,12 @@ MediTrack AI is a healthcare monitoring system with predictive alerts using micr
 - [x] Real-time WebSocket connections
 
 #### Sub-phase 5.2: Dashboard Features
+- [x] Designing and developement of admin dashboard.
 - [x] Patient vital monitoring
+- [x] Designing and developement of doctor dashboard.
 - [x] Real-time alerts display
-- [x] Historical data visualization (Recharts)
-- [x] Report generation
+- [x] Designing and developement of nurse dashboard.
+0
 
 ### 🧪 PHASE 6: TESTING & QUALITY ASSURANCE (Week 13-14)
 #### Sub-phase 6.1: Unit & Integration Testing

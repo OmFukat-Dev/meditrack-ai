@@ -43,8 +43,9 @@ function buildRecentVitalReports(vitals: any[]): RecentVitalReport[] {
   const rows = new Map<string, RecentVitalReport>()
 
   for (const vital of vitals) {
-    const timestamp = new Date(vital.readingTimestamp || vital.timestamp || Date.now()).toISOString()
-    const key = `${timestamp}::${String(vital.recordedBy || vital.nurseId || vital.source || '')}`
+    const timestampValue = vital.readingTimestamp || vital.timestamp || Date.now()
+    const timestamp = new Date(timestampValue).toISOString()
+    const key = `${timestamp}::${String(vital.patientId ?? '')}::${String(vital.recordedBy || vital.nurseId || vital.source || '')}`
     const existing = rows.get(key) ?? {
       timestamp,
       time: new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -81,19 +82,53 @@ function buildRecentVitalReports(vitals: any[]): RecentVitalReport[] {
     rows.set(key, existing)
   }
 
-  return Array.from(rows.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+  return Array.from(rows.values())
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 12)
 }
+
+const LOCAL_NURSE_VITAL_EVENT = 'meditrack:nurse-vital'
+const LOCAL_NURSE_VITAL_STORAGE_KEY = 'meditrack:last-nurse-vital'
 
 function buildVitalTrendFromReports(reports: RecentVitalReport[]) {
   if (!reports || reports.length === 0) return []
-  return reports.map((report) => ({
-    time: report.time,
-    hr: report.heartRate,
-    systolic: report.systolic,
-    diastolic: report.diastolic,
-    temp: report.temperature,
-    spo2: report.spo2,
-  }))
+  return reports
+    .slice(0, 12)
+    .map((report) => ({
+      time: report.time,
+      hr: report.heartRate,
+      systolic: report.systolic,
+      diastolic: report.diastolic,
+      temp: report.temperature,
+      spo2: report.spo2,
+    }))
+}
+
+function normalizeVitalEvent(eventData: any) {
+  if (!eventData || typeof eventData !== 'object') return eventData
+  const normalized = { ...eventData }
+
+  if (normalized.vitalType === 'HEART_RATE' && normalized.value != null && normalized.heartRate == null) {
+    normalized.heartRate = Number(normalized.value)
+  }
+  if (normalized.vitalType === 'TEMPERATURE' && normalized.value != null && normalized.temperature == null) {
+    normalized.temperature = Number(normalized.value)
+  }
+  if (normalized.vitalType === 'SPO2' && normalized.value != null) {
+    if (normalized.oxygenSaturation == null) normalized.oxygenSaturation = Number(normalized.value)
+    if (normalized.spo2 == null) normalized.spo2 = Number(normalized.value)
+  }
+  if (normalized.vitalType === 'BLOOD_PRESSURE') {
+    normalized.systolic = Number(normalized.systolic)
+    normalized.diastolic = Number(normalized.diastolic)
+  }
+  if (!normalized.readingTimestamp && normalized.timestamp) {
+    normalized.readingTimestamp = normalized.timestamp
+  }
+  if (!normalized.timestamp && normalized.readingTimestamp) {
+    normalized.timestamp = normalized.readingTimestamp
+  }
+  return normalized
 }
 
 function getConditionColor(c: string) {
@@ -258,6 +293,46 @@ export default function DoctorDashboardRealTime() {
       seenVitalEventIds.current.clear()
     }
   }, [selectedPatient, wsConnected, user?.department])
+
+  useEffect(() => {
+    if (!selectedPatient) return
+
+    const handleLocalVitalEvent = (eventData: any) => {
+      const normalizedEvent = normalizeVitalEvent(eventData)
+      if (!normalizedEvent || String(normalizedEvent.patientId) !== String(selectedPatient.id)) return
+      const timestampValue = normalizedEvent.timestamp || normalizedEvent.readingTimestamp || ''
+      const eventId = normalizedEvent.eventId || `${normalizedEvent.patientId}-${normalizedEvent.vitalType}-${timestampValue}-${normalizedEvent.value || normalizedEvent.systolic || normalizedEvent.diastolic}`
+      if (seenVitalEventIds.current.has(eventId)) return
+      seenVitalEventIds.current.add(eventId)
+      setPatientVitals(prev => [normalizedEvent, ...prev.slice(0, 49)])
+    }
+
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key !== LOCAL_NURSE_VITAL_STORAGE_KEY || !e.newValue) return
+      try {
+        const parsed = JSON.parse(e.newValue)
+        const events = Array.isArray(parsed) ? parsed : [parsed]
+        events.forEach(handleLocalVitalEvent)
+      } catch {
+        // ignore malformed local event payloads
+      }
+    }
+
+    const handleCustomEvent = (e: Event) => {
+      const customEvent = e as CustomEvent
+      if (!customEvent.detail) return
+      const events = Array.isArray(customEvent.detail) ? customEvent.detail : [customEvent.detail]
+      events.forEach(handleLocalVitalEvent)
+    }
+
+    window.addEventListener('storage', handleStorageEvent)
+    window.addEventListener(LOCAL_NURSE_VITAL_EVENT, handleCustomEvent)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageEvent)
+      window.removeEventListener(LOCAL_NURSE_VITAL_EVENT, handleCustomEvent)
+    }
+  }, [selectedPatient])
 
   async function connectWebSocket() {
     try { await wsService.connect(); setWsConnected(true) }

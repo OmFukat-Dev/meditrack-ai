@@ -58,18 +58,8 @@ export interface MedicalReport {
 // Users from database seed
 export const mockUsers: User[] = [
   { id: 'admin-om', email: 'om@meditrackadmin.ai', password: 'password123', name: 'Om Fukat', role: 'admin', department: 'Administration', isActive: true, createdAt: '2024-01-01' },
-  { id: 'admin-sakshi', email: 'sakshi@meditrackadmin.ai', password: 'password123', name: 'Sakshi Admin', role: 'admin', department: 'Administration', isActive: true, createdAt: '2024-01-01' },
   { id: 'doc-dipanshu', email: 'dipanshu@meditrackcardiology.ai', password: 'password123', name: 'Dipanshu Sharma', role: 'doctor', department: 'Cardiology', isActive: true, createdAt: '2024-01-01' },
-  { id: 'doc-tanmay', email: 'tanmay@meditrackpediatrics.ai', password: 'password123', name: 'Tanmay Kumar', role: 'doctor', department: 'Pediatrics', isActive: true, createdAt: '2024-01-01' },
-  { id: 'doc-ayush', email: 'ayush@meditrackneurology.ai', password: 'password123', name: 'Ayush Singh', role: 'doctor', department: 'Neurology', isActive: true, createdAt: '2024-01-01' },
-  { id: 'doc-chetan', email: 'chetan@meditrackoncology.ai', password: 'password123', name: 'Chetan Patel', role: 'doctor', department: 'Oncology', isActive: true, createdAt: '2024-01-01' },
-  { id: 'doc-monir', email: 'monir@meditrackorthopedics.ai', password: 'password123', name: 'Monir Hossain', role: 'doctor', department: 'Orthopedics', isActive: true, createdAt: '2024-01-01' },
-  { id: 'nurse-sarah', email: 'sarah@meditrackcardiology.ai', password: 'password123', name: 'Sarah Johnson', role: 'nurse', department: 'Cardiology', isActive: true, createdAt: '2024-01-01' },
-  { id: 'nurse-emily', email: 'emily@meditrackneurology.ai', password: 'password123', name: 'Emily Davis', role: 'nurse', department: 'Neurology', isActive: true, createdAt: '2024-01-01' },
-  { id: 'nurse-jessica', email: 'jessica@meditrackpediatrics.ai', password: 'password123', name: 'Jessica Brown', role: 'nurse', department: 'Pediatrics', isActive: true, createdAt: '2024-01-01' },
-  { id: 'nurse-monalisa', email: 'monalisa@meditrackoncology.ai', password: 'password123', name: 'Monalisa Khan', role: 'nurse', department: 'Oncology', isActive: true, createdAt: '2024-01-01' },
-  { id: 'nurse-lana', email: 'lana@meditrackorthopedics.ai', password: 'password123', name: 'Lana Wilson', role: 'nurse', department: 'Orthopedics', isActive: true, createdAt: '2024-01-01' },
-  { id: 'viewer-1', email: 'viewer@meditrack.ai', password: 'password123', name: 'Viewer User', role: 'viewer', department: 'Administration', isActive: true, createdAt: '2024-01-01' }
+  { id: 'nurse-sarah', email: 'sarah@meditrackcardiology.ai', password: 'password123', name: 'Sarah Johnson', role: 'nurse', department: 'Cardiology', isActive: true, createdAt: '2024-01-01' }
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────

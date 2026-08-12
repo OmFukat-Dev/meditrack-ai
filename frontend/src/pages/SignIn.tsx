@@ -51,7 +51,15 @@ export default function SignIn() {
         message: string;
         token: string;
         sessionToken?: string;
-        user: {
+        id?: string;
+        email?: string;
+        name?: string;
+        role?: string;
+        department?: string;
+        bedNumber?: string;
+        patientIdentifier?: string;
+        wardNumber?: string;
+        user?: {
           id: string;
           email: string;
           firstName: string;
@@ -64,20 +72,24 @@ export default function SignIn() {
         };
       };
 
+      // The gateway returns a flat access-principal response, while older auth
+      // implementations return the user under `user`. Support both contracts.
       const userDetail = responseData.user;
-      const userRole = normalizeRole(userDetail.roleName || 'viewer');
-      const fullName = `${userDetail.firstName || ''} ${userDetail.lastName || ''}`.trim() || 'User';
+      const userRole = normalizeRole(userDetail?.roleName || responseData.role || 'viewer');
+      const fullName = userDetail
+        ? `${userDetail.firstName || ''} ${userDetail.lastName || ''}`.trim() || 'User'
+        : responseData.name?.trim() || 'User';
       const token = responseData.token || responseData.sessionToken || '';
 
       login({
-        id: userDetail.id,
+        id: userDetail?.id || responseData.id || '',
         name: fullName,
         role: userRole as 'admin' | 'doctor' | 'nurse' | 'patient' | 'viewer',
-        email: userDetail.email,
-        department: userDetail.departmentName || undefined,
-        bedNumber: userDetail.bedNumber || undefined,
-        patientIdentifier: userDetail.patientIdentifier || undefined,
-        wardNumber: userDetail.wardNumber || undefined,
+        email: userDetail?.email || responseData.email,
+        department: userDetail?.departmentName || responseData.department || undefined,
+        bedNumber: userDetail?.bedNumber || responseData.bedNumber || undefined,
+        patientIdentifier: userDetail?.patientIdentifier || responseData.patientIdentifier || undefined,
+        wardNumber: userDetail?.wardNumber || responseData.wardNumber || undefined,
         token: token,
         avatar: avatarForRole(userRole),
       });

@@ -206,36 +206,9 @@ export const mockPatients: Patient[] = [
     guardianName: 'Jane Doe',
     guardianMobile: '+1-555-0123-4568',
     vitals: [
-      {
-        id: 'vital-1',
-        patientId: 'patient-1',
-        timestamp: '2024-04-20T08:00:00Z',
-        heartRate: 72,
-        bloodPressure: { systolic: 120, diastolic: 80 },
-        temperature: 98.6,
-        oxygenSaturation: 98,
-        recordedBy: 'nurse-1'
-      },
-      {
-        id: 'vital-2',
-        patientId: 'patient-1',
-        timestamp: '2024-04-20T12:00:00Z',
-        heartRate: 75,
-        bloodPressure: { systolic: 122, diastolic: 82 },
-        temperature: 98.8,
-        oxygenSaturation: 97,
-        recordedBy: 'nurse-1'
-      },
-      {
-        id: 'vital-3',
-        patientId: 'patient-1',
-        timestamp: '2024-04-20T16:00:00Z',
-        heartRate: 70,
-        bloodPressure: { systolic: 118, diastolic: 78 },
-        temperature: 98.4,
-        oxygenSaturation: 99,
-        recordedBy: 'nurse-1'
-      }
+      { id: 'vital-1', patientId: 'patient-1', timestamp: '2024-04-20T08:00:00Z', heartRate: 72, bloodPressure: { systolic: 120, diastolic: 80 }, temperature: 98.6, oxygenSaturation: 98, recordedBy: 'nurse-1' },
+      { id: 'vital-2', patientId: 'patient-1', timestamp: '2024-04-20T12:00:00Z', heartRate: 75, bloodPressure: { systolic: 122, diastolic: 82 }, temperature: 98.8, oxygenSaturation: 97, recordedBy: 'nurse-1' },
+      { id: 'vital-3', patientId: 'patient-1', timestamp: '2024-04-20T16:00:00Z', heartRate: 70, bloodPressure: { systolic: 118, diastolic: 78 }, temperature: 98.4, oxygenSaturation: 99, recordedBy: 'nurse-1' }
     ],
     reports: []
   },
@@ -256,26 +229,96 @@ export const mockPatients: Patient[] = [
     guardianName: 'Robert Smith',
     guardianMobile: '+1-555-0123-4570',
     vitals: [
-      {
-        id: 'vital-4',
-        patientId: 'patient-2',
-        timestamp: '2024-04-20T09:00:00Z',
-        heartRate: 85,
-        bloodPressure: { systolic: 130, diastolic: 85 },
-        temperature: 99.2,
-        oxygenSaturation: 96,
-        recordedBy: 'nurse-1'
-      },
-      {
-        id: 'vital-5',
-        patientId: 'patient-2',
-        timestamp: '2024-04-20T13:00:00Z',
-        heartRate: 88,
-        bloodPressure: { systolic: 132, diastolic: 86 },
-        temperature: 99.4,
-        oxygenSaturation: 95,
-        recordedBy: 'nurse-1'
-      }
+      { id: 'vital-4', patientId: 'patient-2', timestamp: '2024-04-20T09:00:00Z', heartRate: 85, bloodPressure: { systolic: 130, diastolic: 85 }, temperature: 99.2, oxygenSaturation: 96, recordedBy: 'nurse-1' },
+      { id: 'vital-5', patientId: 'patient-2', timestamp: '2024-04-20T13:00:00Z', heartRate: 88, bloodPressure: { systolic: 132, diastolic: 86 }, temperature: 99.4, oxygenSaturation: 95, recordedBy: 'nurse-1' }
+    ],
+    reports: []
+  },
+  {
+    id: 'patient-3',
+    patientIdentifier: 'PT-003',
+    name: 'Aarav Kumar',
+    email: 'aarav.kumar@patient.com',
+    password: 'password123',
+    age: 58,
+    gender: 'Male',
+    roomNumber: 'C-312',
+    condition: 'STABLE',
+    admittedDate: '2024-04-16',
+    doctorId: 'doc-2',
+    nurseId: 'nurse-2',
+    mobileNumber: '+1-555-0123-4571',
+    guardianName: 'Priya Kumar',
+    guardianMobile: '+1-555-0123-4572',
+    vitals: [
+      { id: 'vital-6', patientId: 'patient-3', timestamp: '2024-04-20T08:30:00Z', heartRate: 68, bloodPressure: { systolic: 116, diastolic: 76 }, temperature: 98.3, oxygenSaturation: 99, recordedBy: 'nurse-2' },
+      { id: 'vital-7', patientId: 'patient-3', timestamp: '2024-04-20T12:30:00Z', heartRate: 71, bloodPressure: { systolic: 118, diastolic: 77 }, temperature: 98.5, oxygenSaturation: 98, recordedBy: 'nurse-2' }
+    ],
+    reports: []
+  },
+  {
+    id: 'patient-4',
+    patientIdentifier: 'PT-004',
+    name: 'Sophia Lee',
+    email: 'sophia.lee@patient.com',
+    password: 'password123',
+    age: 39,
+    gender: 'Female',
+    roomNumber: 'D-120',
+    condition: 'CRITICAL',
+    admittedDate: '2024-04-19',
+    doctorId: 'doc-3',
+    nurseId: 'nurse-3',
+    mobileNumber: '+1-555-0123-4573',
+    guardianName: 'Daniel Lee',
+    guardianMobile: '+1-555-0123-4574',
+    vitals: [
+      { id: 'vital-8', patientId: 'patient-4', timestamp: '2024-04-20T07:45:00Z', heartRate: 104, bloodPressure: { systolic: 138, diastolic: 92 }, temperature: 100.1, oxygenSaturation: 93, recordedBy: 'nurse-3' },
+      { id: 'vital-9', patientId: 'patient-4', timestamp: '2024-04-20T11:45:00Z', heartRate: 108, bloodPressure: { systolic: 142, diastolic: 94 }, temperature: 100.4, oxygenSaturation: 91, recordedBy: 'nurse-3' }
+    ],
+    reports: []
+  },
+  {
+    id: 'patient-5',
+    patientIdentifier: 'PT-005',
+    name: 'Emma Patel',
+    email: 'emma.patel@patient.com',
+    password: 'password123',
+    age: 67,
+    gender: 'Female',
+    roomNumber: 'E-205',
+    condition: 'EMERGENCY',
+    admittedDate: '2024-04-20',
+    doctorId: 'doc-4',
+    nurseId: 'nurse-4',
+    mobileNumber: '+1-555-0123-4575',
+    guardianName: 'Harsh Patel',
+    guardianMobile: '+1-555-0123-4576',
+    vitals: [
+      { id: 'vital-10', patientId: 'patient-5', timestamp: '2024-04-20T08:15:00Z', heartRate: 118, bloodPressure: { systolic: 155, diastolic: 100 }, temperature: 101.2, oxygenSaturation: 89, recordedBy: 'nurse-4' },
+      { id: 'vital-11', patientId: 'patient-5', timestamp: '2024-04-20T12:15:00Z', heartRate: 121, bloodPressure: { systolic: 160, diastolic: 102 }, temperature: 101.4, oxygenSaturation: 88, recordedBy: 'nurse-4' }
+    ],
+    reports: []
+  },
+  {
+    id: 'patient-6',
+    patientIdentifier: 'PT-006',
+    name: 'Liam Wilson',
+    email: 'liam.wilson@patient.com',
+    password: 'password123',
+    age: 52,
+    gender: 'Male',
+    roomNumber: 'F-410',
+    condition: 'Post-Operative Recovery',
+    admittedDate: '2024-04-17',
+    doctorId: 'doc-5',
+    nurseId: 'nurse-5',
+    mobileNumber: '+1-555-0123-4577',
+    guardianName: 'Olivia Wilson',
+    guardianMobile: '+1-555-0123-4578',
+    vitals: [
+      { id: 'vital-12', patientId: 'patient-6', timestamp: '2024-04-20T09:10:00Z', heartRate: 76, bloodPressure: { systolic: 122, diastolic: 81 }, temperature: 98.9, oxygenSaturation: 97, recordedBy: 'nurse-5' },
+      { id: 'vital-13', patientId: 'patient-6', timestamp: '2024-04-20T13:10:00Z', heartRate: 74, bloodPressure: { systolic: 120, diastolic: 80 }, temperature: 98.7, oxygenSaturation: 98, recordedBy: 'nurse-5' }
     ],
     reports: []
   }

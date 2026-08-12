@@ -16,7 +16,14 @@ public class MeditrackJwtUtil {
     private final Key key;
 
     public MeditrackJwtUtil(MeditrackSecurityProperties properties) {
-        byte[] keyBytes = properties.getJwt().getSecret().getBytes(StandardCharsets.UTF_8);
+        String secret = properties.getJwt().getSecret();
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalArgumentException("JWT secret must be configured via meditrack.security.jwt.secret");
+        }
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            throw new IllegalArgumentException("JWT secret must be at least 32 bytes (256 bits) long");
+        }
         this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 

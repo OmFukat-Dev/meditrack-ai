@@ -17,11 +17,11 @@ public class Notification {
     private String message;
     
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "notification_type", nullable = false, columnDefinition = "VARCHAR(50)")
     private NotificationType notificationType;
     
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(50)")
     private NotificationPriority priority;
     
     @Column(name = "sent_at")
@@ -34,7 +34,7 @@ public class Notification {
     private LocalDateTime readAt;
     
     @Enumerated(EnumType.STRING)
-    @Column(name = "status")
+    @Column(name = "status", columnDefinition = "VARCHAR(50)")
     private NotificationStatus status;
     
     @Column(name = "escalation_level")

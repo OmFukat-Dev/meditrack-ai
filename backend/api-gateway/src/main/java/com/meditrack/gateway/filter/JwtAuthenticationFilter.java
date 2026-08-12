@@ -19,6 +19,8 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
 
     @Value("${meditrack.security.auth.enabled:true}")
     private boolean authEnabled;
+    @Value("${meditrack.security.auth.test-bypass:false}")
+    private boolean testBypass;
 
     public JwtAuthenticationFilter() {
         super(Config.class);
@@ -38,19 +40,22 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
                 return chain.filter(exchange);
             }
 
-            // TEMPORARY: Disable authentication for testing
+            // TEMPORARY: Disable authentication for testing only when explicit test-bypass is enabled
             if (!authEnabled) {
-                // Add default headers for testing when auth is disabled
-                ServerWebExchange mutatedExchange = exchange.mutate()
-                        .request(exchange.getRequest().mutate()
-                                .header("X-User-Email", "test@example.com")
-                                .header("X-User-Role", "admin")
-                                .header("X-User-Department", "ICU")
-                                .header("X-User-Id", "1")
-                                .header("X-User-Display-Name", "Test User")
-                                .build())
-                        .build();
-                return chain.filter(mutatedExchange);
+                if (testBypass) {
+                    ServerWebExchange mutatedExchange = exchange.mutate()
+                            .request(exchange.getRequest().mutate()
+                                    .header("X-User-Email", "test@example.com")
+                                    .header("X-User-Role", "admin")
+                                    .header("X-User-Department", "ICU")
+                                    .header("X-User-Id", "1")
+                                    .header("X-User-Display-Name", "Test User")
+                                    .build())
+                            .build();
+                    return chain.filter(mutatedExchange);
+                } else {
+                    return onError(exchange, "Authentication disabled by configuration", HttpStatus.FORBIDDEN);
+                }
             }
 
             if (!exchange.getRequest().getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {

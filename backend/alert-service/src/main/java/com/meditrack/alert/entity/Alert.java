@@ -14,7 +14,7 @@ public class Alert {
     private String alertType;
     
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(50)")
     private AlertPriority priority;
     
     @Column(nullable = false)
@@ -45,7 +45,7 @@ public class Alert {
     private LocalDateTime processedAt;
     
     @Enumerated(EnumType.STRING)
-    @Column(name = "status")
+    @Column(name = "status", columnDefinition = "VARCHAR(50)")
     private AlertStatus status;
     
     @Column(name = "escalation_level")

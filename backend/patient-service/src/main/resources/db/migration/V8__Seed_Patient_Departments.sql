@@ -1,6 +1,6 @@
--- Seed department values for the patients
-UPDATE patients SET department = 'Cardiology' WHERE id IN ('patient-1', 'patient-2', 'patient-3', 'patient-4', 'patient-5');
-UPDATE patients SET department = 'Pediatrics' WHERE id IN ('patient-6', 'patient-7', 'patient-8', 'patient-9', 'patient-10');
-UPDATE patients SET department = 'Neurology' WHERE id IN ('patient-11', 'patient-12', 'patient-13', 'patient-14', 'patient-15');
-UPDATE patients SET department = 'Oncology' WHERE id IN ('patient-16', 'patient-17', 'patient-18', 'patient-19', 'patient-20');
-UPDATE patients SET department = 'Orthopedics' WHERE id IN ('patient-21', 'patient-22', 'patient-23', 'patient-24', 'patient-25');
+-- Seed department values using the stable string identifier. The primary key is BIGINT.
+UPDATE patients SET department = 'Cardiology' WHERE patient_identifier IN ('PT-001', 'PT-002', 'PT-003', 'PT-004', 'PT-005');
+UPDATE patients SET department = 'Pediatrics' WHERE patient_identifier IN ('PT-006', 'PT-007', 'PT-008', 'PT-009', 'PT-010');
+UPDATE patients SET department = 'Neurology' WHERE patient_identifier IN ('PT-011', 'PT-012', 'PT-013', 'PT-014', 'PT-015');
+UPDATE patients SET department = 'Oncology' WHERE patient_identifier IN ('PT-016', 'PT-017', 'PT-018', 'PT-019', 'PT-020');
+UPDATE patients SET department = 'Orthopedics' WHERE patient_identifier IN ('PT-021', 'PT-022', 'PT-023', 'PT-024', 'PT-025');

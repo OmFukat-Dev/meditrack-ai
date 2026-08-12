@@ -544,7 +544,7 @@ Good, with expected improvement in ${patient.condition.includes('Post') ? 'post-
                 className="p-2.5 bg-error-500/10 hover:bg-error-500/20 text-error-400 hover:text-error-300 rounded-xl border border-error-500/20 transition-all flex items-center gap-2 text-sm font-semibold"
               >
                 <LogOut size={16} />
-                Logout
+                Sign Out
               </button>
             </div>
           </div>
@@ -557,7 +557,7 @@ Good, with expected improvement in ${patient.condition.includes('Post') ? 'post-
         {/* Patient Selection list */}
         <div className="glass-panel p-6">
           <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <User size={18} className="text-primary-400" /> Active Roster ({patients.length} Patients)
+            <User size={18} className="text-primary-400" /> Active Roster ({patients.length} {patients.length === 1 ? 'Patient' : 'Patients'})
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {patients.map(patient => {

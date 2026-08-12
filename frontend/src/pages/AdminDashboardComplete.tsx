@@ -456,7 +456,7 @@ export default function AdminDashboardComplete() {
                 className="p-2.5 bg-error-500/10 hover:bg-error-500/20 text-error-400 hover:text-error-300 rounded-xl border border-error-500/20 transition-all flex items-center gap-2 text-sm font-semibold"
               >
                 <LogOut size={16} />
-                Logout
+                Sign Out
               </button>
             </div>
           </div>

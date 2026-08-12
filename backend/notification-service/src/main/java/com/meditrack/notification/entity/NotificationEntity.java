@@ -30,22 +30,21 @@ public class NotificationEntity {
     private String recipientId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "recipient_type", nullable = false, length = 20)
+    @Column(name = "recipient_type", nullable = false, columnDefinition = "VARCHAR(20)")
     private RecipientType recipientType;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "notification_type", nullable = false, length = 50)
+    @Column(name = "notification_type", nullable = false, columnDefinition = "VARCHAR(50)")
     private NotificationType notificationType;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "channel_type", nullable = false, length = 20)
+    @Column(name = "channel_type", nullable = false, columnDefinition = "VARCHAR(20)")
     private NotificationChannel channelType;
 
     @Column(length = 200)
     private String subject;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
     @Column(name = "message_data", columnDefinition = "JSON")
@@ -55,7 +54,7 @@ public class NotificationEntity {
     private Integer priorityLevel;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "delivery_status", length = 20)
+    @Column(name = "delivery_status", columnDefinition = "VARCHAR(20)")
     private NotificationStatus deliveryStatus;
 
     @Column(name = "scheduled_at")
@@ -70,8 +69,7 @@ public class NotificationEntity {
     @Column(name = "read_at")
     private LocalDateTime readAt;
 
-    @Lob
-    @Column(name = "failure_reason")
+    @Column(name = "failure_reason", columnDefinition = "TEXT")
     private String failureReason;
 
     @Column(name = "retry_count")

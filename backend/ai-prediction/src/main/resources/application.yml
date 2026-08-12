@@ -212,17 +212,3 @@ ai:
       enable-bootstrap-sampling: false
       bootstrap-samples: 100
 
-# Logging Configuration
-logging:
-  level:
-    com.meditrack.ai: DEBUG
-    weka: WARN
-    org.springframework.kafka: INFO
-    org.springframework.web: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-  file:
-    name: logs/ai-prediction.log
-    max-size: 100MB
-    max-history: 30

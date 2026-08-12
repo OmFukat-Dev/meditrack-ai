@@ -77,6 +77,13 @@ management:
 
 # MediTrack Alert Service Configuration
 meditrack:
+  security:
+    auth:
+      enabled: ${MEDITRACK_AUTH_ENABLED:true}
+    jwt:
+      secret: ${JWT_SECRET:meditrack-ai-gateway-signing-key-2026-local-development}
+    service-jwt:
+      secret: ${SERVICE_JWT_SECRET:meditrack-ai-service-signing-key-2026-local-development}
   alert:
     # Alert Processing Configuration
     processing:
@@ -196,11 +203,3 @@ logging:
       max-file-size: 25MB
       max-history: 14
 
-meditrack:
-  security:
-    auth:
-      enabled: ${MEDITRACK_AUTH_ENABLED:true}
-    jwt:
-      secret: ${JWT_SECRET:meditrack-ai-gateway-signing-key-2026-local-development}
-    service-jwt:
-      secret: ${SERVICE_JWT_SECRET:meditrack-ai-service-signing-key-2026-local-development}

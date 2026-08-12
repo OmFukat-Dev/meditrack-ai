@@ -90,5 +90,5 @@ public interface FhirResourceRepository extends JpaRepository<FhirResource, Long
     // Delete operations for cleanup
     void deleteByPatientId(Long patientId);
     void deleteByPatientIdAndResourceType(Long patientId, FhirResource.FhirResourceType resourceType);
-    void deleteByPatientIdAndCreatedAtBefore(java.time.LocalDateTime cutoffDate);
+    void deleteByPatientIdAndCreatedAtBefore(Long patientId, java.time.LocalDateTime cutoffDate);
 }

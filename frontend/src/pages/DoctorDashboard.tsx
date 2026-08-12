@@ -23,6 +23,7 @@ import { useAuth } from '../context/AuthContext';
 import Sidebar from '../components/Sidebar';
 import TopNavbar from '../components/TopNavbar';
 import { patientApi, reportApi, vitalsApi } from '../services/api';
+import { mockPatients } from '../database/mockDatabaseFromSeed';
 
 type PatientRecord = {
   id: number;
@@ -105,8 +106,23 @@ export default function DoctorDashboard() {
         setSelectedPatientId(String(content[0].id));
       }
     } catch (error) {
-      console.error('Unable to load patients', error);
-      setPatients([]);
+      console.error('Unable to load patients from API, using local mock data', error);
+      // Fallback to local mock data when backend is unavailable
+      const mockContent: PatientRecord[] = mockPatients.map((patient, index) => ({
+        id: index + 1,
+        patientIdentifier: patient.patientIdentifier,
+        firstName: patient.name.split(' ')[0],
+        lastName: patient.name.split(' ').slice(1).join(' '),
+        department: patient.roomNumber?.includes('-') ? 'Cardiology' : 'General',
+        bedNumber: patient.roomNumber?.split('-')[1] || 'N/A',
+        clinicalStatus: patient.condition,
+        assignedClinicianName: 'Dr. Dipanshu Sharma',
+        assignedClinicianEmail: 'dipanshu@meditrack.ai'
+      }));
+      setPatients(mockContent);
+      if (mockContent.length > 0) {
+        setSelectedPatientId(String(mockContent[0].id));
+      }
     } finally {
       setLoading(false);
     }

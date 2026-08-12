@@ -2,29 +2,34 @@
 setlocal
 cd /d "%~dp0frontend"
 
+set "NPM_CMD="
+where npm >nul 2>nul
+if %errorlevel% equ 0 (
+  set "NPM_CMD=npm"
+)
+
+if "%NPM_CMD%"=="" (
+  echo ERROR: npm was not found. Please install Node.js and ensure npm is in PATH.
+  pause
+  exit /b 1
+)
+
 echo Checking frontend dependencies...
 if not exist node_modules (
   echo Installing frontend dependencies...
-  npm install
+  call %NPM_CMD% install
   if errorlevel 1 (
-    echo Frontend dependency install failed.
+    echo ERROR: Frontend dependency install failed.
+    pause
     exit /b 1
   )
 ) else (
-  echo Frontend dependencies already installed.
+  echo Frontend dependencies are already installed.
 )
 
 echo.
 echo Starting MediTrack AI Frontend...
 echo Frontend will be available at: http://localhost:3000
 echo.
-echo Features available:
-echo - Beautiful modern login page with role selection
-echo - Database-backed authentication system  
-echo - Admin dashboard with staff management
-echo - Doctor dashboard with real vital charts
-echo - Report generation and call functionality
-echo.
-
-npm run dev
+call %NPM_CMD% run dev
 endlocal

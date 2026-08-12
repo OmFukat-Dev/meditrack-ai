@@ -23,7 +23,13 @@ public class JwtUtil {
         @Value("${meditrack.security.jwt.secret}") String secret,
         @Value("${meditrack.security.jwt.expiration-ms:86400000}") long jwtExpiration
     ) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalArgumentException("JWT secret must be configured via meditrack.security.jwt.secret");
+        }
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            throw new IllegalArgumentException("JWT secret must be at least 32 bytes (256 bits) long");
+        }
         this.key = Keys.hmacShaKeyFor(keyBytes);
         this.jwtExpiration = jwtExpiration;
     }

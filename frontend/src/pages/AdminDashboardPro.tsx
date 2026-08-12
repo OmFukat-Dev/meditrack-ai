@@ -638,63 +638,66 @@ export default function AdminDashboardPro() {
   }
 
   return (
-    <div className="min-h-screen bg-dark-950 text-white relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-[720px] h-[720px] bg-primary-500/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[640px] h-[640px] bg-secondary-500/10 rounded-full blur-[140px] pointer-events-none" />
+    <div className="min-h-screen bg-gradient-to-br from-[#0b1f2a] via-[#0f4c5c] to-[#0a5fbb] text-white relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.12),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(13,148,136,0.18),_transparent_28%)]" />
+      <div className="absolute top-0 right-0 w-[720px] h-[720px] bg-cyan-400/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[640px] h-[640px] bg-blue-500/10 rounded-full blur-[140px] pointer-events-none" />
 
-      <header className="relative z-10 px-6 py-5 border-b border-white/5 bg-dark-950/80 backdrop-blur-xl flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-[0.35em] text-dark-400">Administration Console</p>
-          <h1 className="text-3xl font-bold mt-1">MediTrack Control Center</h1>
-          <p className="text-sm text-dark-300 mt-1">
-            {user?.name ? `Signed in as ${user.name}` : 'Hospital operations, analytics, alerts, and command center'}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-dark-400" />
-            <input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search patients, staff, alerts"
-              className="input-field pl-10 min-w-[240px]"
-            />
+      <header className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-5">
+        <div className="rounded-2xl border border-white/10 bg-white/10 backdrop-blur-xl px-5 py-4 shadow-card flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-cyan-100/80">Administration Console</p>
+            <h1 className="text-3xl font-bold mt-1">MediTrack Admin Dashboard</h1>
+            <p className="text-sm text-cyan-50/80 mt-1">
+              {user?.name ? `Signed in as ${user.name}` : 'Hospital operations, analytics, alerts, and command center'}
+            </p>
           </div>
-          <select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} className="input-field min-w-[160px]">
-            <option value="all">All Departments</option>
-            {staffDepartments.map((department) => (
-              <option key={department} value={department}>
-                {department}
-              </option>
-            ))}
-          </select>
-          <select value={riskFilter} onChange={(event) => setRiskFilter(event.target.value as any)} className="input-field min-w-[160px]">
-            {riskFilters.map((risk) => (
-              <option key={risk} value={risk}>
-                {risk === 'all' ? 'All Risks' : `${risk} Risk`}
-              </option>
-            ))}
-          </select>
-          <button onClick={reloadPatients} className="btn-secondary px-4 py-3" disabled={loading}>
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Loading...' : 'Refresh'}
-          </button>
-          <QuickCallMenu />
-          <button
-            onClick={logout}
-            className="w-11 h-11 rounded-full bg-error-500/10 border border-error-500/20 flex items-center justify-center text-error-300 hover:text-white hover:bg-error-500 transition-colors"
-            title="Sign out"
-          >
-            <LogOut size={16} />
-          </button>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-cyan-100/70" />
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search patients, staff, alerts"
+                className="input-field pl-10 min-w-[240px]"
+              />
+            </div>
+            <select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} className="input-field min-w-[160px]">
+              <option value="all">All Departments</option>
+              {staffDepartments.map((department) => (
+                <option key={department} value={department}>
+                  {department}
+                </option>
+              ))}
+            </select>
+            <select value={riskFilter} onChange={(event) => setRiskFilter(event.target.value as any)} className="input-field min-w-[160px]">
+              {riskFilters.map((risk) => (
+                <option key={risk} value={risk}>
+                  {risk === 'all' ? 'All Risks' : `${risk} Risk`}
+                </option>
+              ))}
+            </select>
+            <button onClick={reloadPatients} className="btn-secondary px-4 py-3" disabled={loading}>
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+              {loading ? 'Loading...' : 'Refresh'}
+            </button>
+            <QuickCallMenu />
+            <button
+              onClick={logout}
+              className="w-11 h-11 rounded-full bg-red-500/20 border border-red-400/30 flex items-center justify-center text-red-100 hover:text-white hover:bg-red-500 transition-colors"
+              title="Sign out"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="relative z-10 max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         {toast && <Toast message={toast} />}
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur-md">
           {sections.map((section) => (
             <TabButton
               key={section.id}
@@ -2200,12 +2203,12 @@ function downloadBlob(blob: Blob, filename: string) {
 function SectionHeader({ icon, title, subtitle }: { icon: ReactNode; title: string; subtitle: string }) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-3 text-primary-400">
+      <div className="flex items-center gap-3 text-cyan-200">
         {icon}
-        <span className="text-xs uppercase tracking-[0.3em] text-dark-400">MediTrack AI</span>
+        <span className="text-xs uppercase tracking-[0.3em] text-cyan-100/70">MediTrack AI</span>
       </div>
-      <h2 className="text-2xl font-bold">{title}</h2>
-      <p className="text-dark-300">{subtitle}</p>
+      <h2 className="text-2xl font-bold text-white">{title}</h2>
+      <p className="text-cyan-50/80">{subtitle}</p>
     </div>
   );
 }
@@ -2215,8 +2218,8 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${
-        active ? 'bg-primary-500 text-white border-primary-500' : 'bg-dark-900/70 text-dark-300 border-white/5 hover:text-white hover:border-white/10'
+      className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
+        active ? 'bg-gradient-to-r from-cyan-400 to-blue-500 text-white border-cyan-300 shadow-[0_0_30px_rgba(34,211,238,0.3)]' : 'bg-white/5 text-cyan-50/80 border-white/10 hover:bg-white/10 hover:text-white'
       }`}
     >
       {icon}
@@ -2227,13 +2230,13 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
 
 function MetricCard({ icon, label, value, detail }: { icon: ReactNode; label: string; value: ReactNode; detail: string }) {
   return (
-    <div className="glass-card p-5">
+    <div className="glass-card p-5 bg-white/10 border border-white/10">
       <div className="flex items-center justify-between mb-3">
-        <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-primary-400 flex items-center justify-center">{icon}</div>
+        <div className="w-10 h-10 rounded-xl bg-cyan-400/10 text-cyan-200 flex items-center justify-center border border-cyan-200/20">{icon}</div>
       </div>
-      <div className="text-dark-400 text-sm">{label}</div>
-      <div className="text-2xl font-bold mt-1">{value}</div>
-      <div className="text-xs text-dark-400 mt-2">{detail}</div>
+      <div className="text-cyan-50/70 text-sm">{label}</div>
+      <div className="text-2xl font-bold mt-1 text-white">{value}</div>
+      <div className="text-xs text-cyan-50/60 mt-2">{detail}</div>
     </div>
   );
 }

@@ -70,6 +70,20 @@ function buildVitalPayloadsList({
   return payloads
 }
 
+function getDisplayName(value: any) {
+  const parts = [
+    value?.name,
+    value?.fullName,
+    value?.firstName && value?.lastName ? `${value.firstName} ${value.lastName}` : value?.firstName,
+    value?.lastName,
+  ].filter(Boolean)
+  return String(parts.join(' ').trim() || value?.email || 'Nurse')
+}
+
+function getDisplayDepartment(value: any) {
+  return String(value?.departmentName || value?.department || 'General').trim() || 'General'
+}
+
 export default function NurseDashboardRealTime() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [assignedPatients, setAssignedPatients] = useState<any[]>([])
@@ -271,7 +285,7 @@ export default function NurseDashboardRealTime() {
           createdBy: currentUser?.id || payload.nurseId,
           role: 'NURSE',
           message: payload.notes,
-          recordedBy: currentUser?.name || payload.nurseId,
+          recordedBy: currentUser ? `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || payload.nurseId : payload.nurseId,
         }))
 
         setRecentReadings(prev => [{
@@ -351,10 +365,10 @@ export default function NurseDashboardRealTime() {
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-white">Nurse Dashboard (Real-Time)</h1>
-              <p className="text-white/80">Nurse {currentUser.firstName} {currentUser.lastName}</p>
+              <h1 className="text-3xl font-bold text-white">MediTrack Nurse Dashboard</h1>
+              <p className="text-white/80">{getDisplayName(currentUser)}</p>
               <div className="flex items-center space-x-4 mt-2">
-                <span className="text-white/60">Department: {currentUser.departmentName || 'General'}</span>
+                <span className="text-white/60">Department: {getDisplayDepartment(currentUser)}</span>
                 <span className={`px-2 py-1 rounded text-xs ${wsConnected ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
                   {wsConnected ? '🟢 Connected' : '🔴 Offline'}
                 </span>
@@ -364,7 +378,7 @@ export default function NurseDashboardRealTime() {
               onClick={() => AuthService.logout()}
               className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
             >
-              Logout
+              Sign Out
             </button>
           </div>
         </div>
@@ -392,7 +406,7 @@ export default function NurseDashboardRealTime() {
           <div className="bg-white/10 backdrop-blur-lg rounded-xl p-5 mb-6">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-white">Care focus for {selectedPatient.firstName} {selectedPatient.lastName}</h3>
+                <h3 className="text-lg font-semibold text-white">Care focus for {selectedPatient?.firstName || selectedPatient?.lastName ? `${selectedPatient.firstName ?? ''} ${selectedPatient.lastName ?? ''}`.trim() : getDisplayName(selectedPatient)}</h3>
                 <p className="text-white/70 text-sm">{patientAnalysis?.overallStatus || 'STABLE'} · Risk {patientAnalysis?.riskLevel || 'LOW'}</p>
               </div>
               <div className={`px-3 py-1 rounded-full text-sm ${patientAnalysis?.overallStatus === 'ALERT' ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}`}>

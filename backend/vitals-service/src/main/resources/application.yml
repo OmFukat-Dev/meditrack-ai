@@ -29,7 +29,9 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+    baseline-version: '0'
     validate-on-migrate: true
+    table: vitals_schema_history
   kafka:
     bootstrap-servers: localhost:9092
     producer:
@@ -46,13 +48,16 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       auto-offset-reset: latest
       enable-auto-commit: false
+      session-timeout: 15000
+      max-poll-records: 500
       properties:
         spring.json.trusted.packages: com.meditrack.vitals
   redis:
     host: localhost
     port: 6379
     password: redis123
-    timeout: 2000ms
+    database: 0
+    timeout: 2000
     lettuce:
       pool:
         max-active: 8

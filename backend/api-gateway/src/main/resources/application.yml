@@ -15,7 +15,7 @@ spring:
         - id: user-service
           uri: lb://user-service
           predicates:
-            - Path=/api/auth/**,/api/users/**
+            - Path=/api/auth/logout,/api/auth/refresh,/api/auth/validate,/api/auth/me,/api/users/**
           filters:
             - CircuitBreaker=fallbackUserService
         
@@ -111,6 +111,7 @@ meditrack:
       expiration-ms: 3600000
   services:
     patient-base-url: http://localhost:8082
+    user-base-url: http://localhost:8081
 
 # Eureka Client Configuration
 eureka:

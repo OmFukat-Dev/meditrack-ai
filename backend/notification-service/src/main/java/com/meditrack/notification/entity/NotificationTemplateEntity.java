@@ -27,11 +27,11 @@ public class NotificationTemplateEntity {
     private String templateName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "template_type", nullable = false, length = 50)
+    @Column(name = "template_type", nullable = false, columnDefinition = "VARCHAR(50)")
     private NotificationType templateType;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "channel_type", nullable = false, length = 20)
+    @Column(name = "channel_type", nullable = false, columnDefinition = "VARCHAR(20)")
     private NotificationChannel channelType;
 
     @Column(name = "subject_template", length = 200)

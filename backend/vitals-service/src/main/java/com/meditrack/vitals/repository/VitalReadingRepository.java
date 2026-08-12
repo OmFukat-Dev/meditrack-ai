@@ -145,7 +145,12 @@ public interface VitalReadingRepository extends JpaRepository<VitalReading, Long
     // Count operations for reporting
     long countByPatientId(Long patientId);
     long countByPatientIdAndVitalType(Long patientId, String vitalType);
-    long countByPatientIdAndTimeRange(Long patientId, LocalDateTime startTime, LocalDateTime endTime);
+    @Query("SELECT COUNT(vr) FROM VitalReading vr WHERE " +
+           "vr.patient.id = :patientId AND " +
+           "vr.readingTimestamp BETWEEN :startTime AND :endTime")
+    long countByPatientIdAndTimeRange(@Param("patientId") Long patientId, 
+                                      @Param("startTime") LocalDateTime startTime, 
+                                      @Param("endTime") LocalDateTime endTime);
     
     // Device statistics
     @Query("SELECT vr.deviceId, COUNT(vr) FROM VitalReading vr WHERE " +

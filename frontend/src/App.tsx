@@ -2,8 +2,8 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import SignIn from './pages/SignIn';
 import AdminDashboardPro from './pages/AdminDashboardPro';
-import DoctorDashboardRealTime from './pages/DoctorDashboardRealTime';
-import NurseDashboardRealTime from './pages/NurseDashboardRealTime';
+import DoctorDashboard from './pages/DoctorDashboard';
+import NurseDashboard from './pages/NurseDashboard';
 import ViewerDashboard from './pages/ViewerDashboard';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -62,11 +62,11 @@ export default function App() {
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['doctor']} />}>
-        <Route path="/doctor" element={<DoctorDashboardRealTime />} />
+        <Route path="/doctor" element={<DoctorDashboard />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['nurse']} />}>
-        <Route path="/nurse" element={<NurseDashboardRealTime />} />
+        <Route path="/nurse" element={<NurseDashboard />} />
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['patient', 'viewer']} />}>

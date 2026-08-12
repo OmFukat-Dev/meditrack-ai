@@ -959,7 +959,7 @@ Department Console Sign-off: [ONLINE SYNCED]
                         {/* Blood pressure display */}
                         <div className="bg-black/30 border border-white/5 rounded-xl p-3 flex justify-between items-center">
                           <div>
-                            <span className="text-[10px] text-dark-400 font-bold uppercase tracking-wider block">Blood Pres</span>
+                            <span className="text-[10px] text-dark-400 font-bold uppercase tracking-wider block">Blood Pressure</span>
                             <span className="text-xl font-extrabold tracking-tight mt-1.5 block font-mono">
                               {latestVitals?.bloodPressure.systolic || 120}/{latestVitals?.bloodPressure.diastolic || 80}
                             </span>
@@ -994,7 +994,7 @@ Department Console Sign-off: [ONLINE SYNCED]
                       ) : (
                         <div className="bg-emerald-500/5 border border-emerald-500/10 text-emerald-400 p-2.5 rounded-xl text-center flex items-center justify-center gap-2 text-xs font-semibold">
                           <CheckCircle2 size={14} />
-                          WARD TELEMETRY SYNCED STABLE
+                          Ward telemetry: synced (stable)
                         </div>
                       )}
                     </div>

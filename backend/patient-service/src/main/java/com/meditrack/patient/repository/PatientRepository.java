@@ -74,7 +74,8 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     // Count operations for reporting
     long countByGender(String gender);
     long countByBloodType(String bloodType);
-    long countByAgeGreaterThan(int age);
+    @Query("SELECT COUNT(p) FROM Patient p WHERE FUNCTION('YEAR', CURRENT_DATE) - FUNCTION('YEAR', p.dateOfBirth) > :age")
+    long countByAgeGreaterThan(@Param("age") int age);
     long countByIsActive(Boolean isActive);
     
     // Complex search for advanced filtering

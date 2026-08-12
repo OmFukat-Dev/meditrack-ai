@@ -235,7 +235,7 @@ export default function AdminDashboardWorking() {
                 onClick={() => AuthService.logout()}
                 className="px-4 py-2 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition-all"
               >
-                Logout
+                Sign Out
               </button>
             </div>
           </div>

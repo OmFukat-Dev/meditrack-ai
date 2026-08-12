@@ -21,7 +21,7 @@ CREATE TABLE ai_predictions (
     verification_notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    FOREIGN KEY (patient_id) REFERENCES meditrack_db.patients(id) ON DELETE CASCADE,
     INDEX idx_patient_prediction_time (patient_id, prediction_timestamp),
     INDEX idx_risk_level (risk_level),
     INDEX idx_prediction_type (prediction_type),
@@ -51,7 +51,7 @@ CREATE TABLE news_scores (
     calculated_by VARCHAR(50) NOT NULL, -- SYSTEM, NURSE, DOCTOR
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+    FOREIGN KEY (patient_id) REFERENCES meditrack_db.patients(id) ON DELETE CASCADE,
     INDEX idx_patient_news_time (patient_id, score_timestamp),
     INDEX idx_news_total_score (total_score),
     INDEX idx_news_calculated_by (calculated_by)

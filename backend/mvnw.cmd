@@ -9,14 +9,14 @@ set MAVEN_PATH2=C:\Users\fukat\.m2\wrapper\dists\apache-maven-3.8.4-bin\52ccbt68
 REM Check first Maven path
 if exist "%MAVEN_PATH1%" (
     echo Using Maven at: D:\Program Files\Apache\apache-maven-3.9.13
-    "%MAVEN_PATH1%" %*
+    call "%MAVEN_PATH1%" %*
     goto :end
 )
 
 REM Check second Maven path
 if exist "%MAVEN_PATH2%" (
     echo Using Maven at: C:\Users\fukat\.m2\wrapper\dists\apache-maven-3.8.4-bin\52ccbt68d252mdldqsfsn03jlf\apache-maven-3.8.4
-    "%MAVEN_PATH2%" %*
+    call "%MAVEN_PATH2%" %*
     goto :end
 )
 
@@ -24,7 +24,7 @@ REM Try system Maven in PATH
 where mvn >nul 2>nul
 if %errorlevel% equ 0 (
     echo Using system Maven
-    mvn %*
+    call mvn %*
     goto :end
 )
 

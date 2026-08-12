@@ -165,15 +165,15 @@ export default function DoctorDashboardAPI() {
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-white">Doctor Dashboard</h1>
-              <p className="text-white/80">Dr. {currentUser.firstName} {currentUser.lastName}</p>
+              <h1 className="text-3xl font-bold text-white">MediTrack Doctor Dashboard</h1>
+              <p className="text-white/80">{currentUser.firstName} {currentUser.lastName}</p>
               <p className="text-white/60">Department: {currentUser.departmentName || 'General'}</p>
             </div>
             <button
               onClick={() => AuthService.logout()}
               className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
             >
-              Logout
+              Sign Out
             </button>
           </div>
         </div>

@@ -55,7 +55,8 @@ public class AuthenticationController {
         try {
             String token = sessionToken.replace("Bearer ", "");
             authenticationService.logout(token);
-            logger.info("Logout successful for token: {}", token.substring(0, 8) + "...");
+            String preview = (token != null && token.length() > 8) ? token.substring(0, 8) + "..." : (token == null ? "" : token);
+            logger.info("Logout successful for token: {}", preview);
             return ResponseEntity.ok().body("Logout successful");
         } catch (Exception e) {
             logger.error("Logout error: {}", e.getMessage(), e);

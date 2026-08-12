@@ -12,7 +12,7 @@ public class AuditLog {
     private String id;
     
     @Enumerated(EnumType.STRING)
-    @Column(name = "event_type", nullable = false)
+    @Column(name = "event_type", nullable = false, columnDefinition = "VARCHAR(50)")
     private AuditEventType eventType;
     
     @Column(name = "entity_id")
@@ -36,7 +36,8 @@ public class AuditLog {
     @ElementCollection
     @CollectionTable(name = "audit_log_details", joinColumns = @JoinColumn(name = "audit_log_id"))
     @MapKeyColumn(name = "detail_key")
-    @Column(name = "detail_value")
+    @Column(name = "detail_value", columnDefinition = "BLOB")
+    @org.hibernate.annotations.JdbcTypeCode(java.sql.Types.BLOB)
     private Map<String, Object> details;
     
     // Constructors

@@ -3,13 +3,13 @@
 -- ACTIVE, ACKNOWLEDGED, IN_PROGRESS, RESOLVED, ESCALATED
 
 -- Map PENDING and FAILED back to ACTIVE
-UPDATE alerts SET alert_status = 'ACTIVE' WHERE alert_status IN ('PENDING', 'FAILED', 'ACTIVE');
+UPDATE alerts SET status = 'ACTIVE' WHERE status IN ('PENDING', 'FAILED', 'ACTIVE');
 
 -- Map PROCESSING to IN_PROGRESS
-UPDATE alerts SET alert_status = 'IN_PROGRESS' WHERE alert_status = 'PROCESSING';
+UPDATE alerts SET status = 'IN_PROGRESS' WHERE status = 'PROCESSING';
 
 -- Map PROCESSED to RESOLVED
-UPDATE alerts SET alert_status = 'RESOLVED' WHERE alert_status = 'PROCESSED';
+UPDATE alerts SET status = 'RESOLVED' WHERE status = 'PROCESSED';
 
--- Modify column size if necessary to support future status additions (e.g. IN_PROGRESS fits in 20, but let's make it 30 for safety)
-ALTER TABLE alerts MODIFY COLUMN alert_status VARCHAR(30) DEFAULT 'ACTIVE';
+-- Modify column size if necessary to support future status additions
+ALTER TABLE alerts MODIFY COLUMN status VARCHAR(30) DEFAULT 'ACTIVE';

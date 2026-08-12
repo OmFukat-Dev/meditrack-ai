@@ -29,7 +29,9 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+    baseline-version: '0'
     validate-on-migrate: true
+    table: patient_schema_history
   security:
     user:
       name: admin

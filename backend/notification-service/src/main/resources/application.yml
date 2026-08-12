@@ -29,7 +29,9 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+    baseline-version: '0'
     validate-on-migrate: true
+    table: notification_schema_history
   kafka:
     bootstrap-servers: localhost:9092
     producer:
@@ -147,18 +149,3 @@ logging:
       max-per-hour: 100
       max-per-day: 1000
 
-logging:
-  level:
-    com.meditrack.notification: DEBUG
-    org.springframework.kafka: INFO
-    org.springframework.scheduling: INFO
-    org.springframework.web: INFO
-  pattern:
-    console: "ts=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=${spring.application.name} traceId=%X{traceId:-} spanId=%X{spanId:-} logger=%logger{36} thread=%thread msg=%msg%n"
-    file: "ts=%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=${spring.application.name} traceId=%X{traceId:-} spanId=%X{spanId:-} logger=%logger{36} thread=%thread msg=%msg%n"
-  file:
-    name: logs/${spring.application.name}.log
-  logback:
-    rollingpolicy:
-      max-file-size: 25MB
-      max-history: 14

@@ -17,6 +17,7 @@ public class EscalationRule {
     private String alertType;
     
     @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(50)")
     private AlertPriority priority;
     
     @Column(name = "escalation_level")
@@ -46,7 +47,7 @@ public class EscalationRule {
     private String escalationCondition;
     
     @Enumerated(EnumType.STRING)
-    @Column(name = "min_priority_level")
+    @Column(name = "min_priority_level", columnDefinition = "VARCHAR(50)")
     private AlertPriority minPriorityLevel;
     
     @Column(name = "escalation_message")

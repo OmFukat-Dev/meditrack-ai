@@ -5,6 +5,25 @@ import { Activity, CreditCard, FileText, User, HeartPulse, Download, LogOut, Che
 import { motion, AnimatePresence } from 'framer-motion';
 import QuickCallMenu from '../components/QuickCallMenu';
 
+function getDisplayName(value: any) {
+  const parts = [
+    value?.name,
+    value?.fullName,
+    value?.firstName && value?.lastName ? `${value.firstName} ${value.lastName}` : value?.firstName,
+    value?.lastName,
+  ].filter(Boolean)
+  return String(parts.join(' ').trim() || value?.email || 'Patient')
+}
+
+function getDisplayCondition(value: any) {
+  const condition = String(value || 'Stable').trim()
+  return condition ? condition.charAt(0).toUpperCase() + condition.slice(1).toLowerCase() : 'Stable'
+}
+
+function getDisplayDepartment(value: any) {
+  return String(value?.department || value?.dept || 'General').trim() || 'General'
+}
+
 export default function ViewerDashboard() {
   const { user, logout } = useAuth();
   const [patientData, setPatientData] = useState<any>(null);
@@ -85,13 +104,14 @@ export default function ViewerDashboard() {
       <header className="glass-panel rounded-none border-t-0 border-l-0 border-r-0 px-8 py-4 flex justify-between items-center z-10">
         <div className="flex items-center gap-3">
           <Activity size={28} className="text-primary-400" />
-          <span className="text-xl font-bold text-white">MediTrack Portal</span>
+          <span className="text-xl font-bold text-white">MediTrack Patient Portal</span>
         </div>
         <div className="flex items-center gap-3">
           <QuickCallMenu />
-          <span className="text-dark-300 text-sm hidden sm:block">Welcome, {patientData?.name || user?.name}</span>
-          <button onClick={logout} className="p-2 rounded-lg bg-dark-800/50 text-dark-300 hover:text-white hover:bg-dark-700 transition-colors">
+          <span className="text-dark-300 text-sm hidden sm:block">Welcome, {getDisplayName(patientData || user)}</span>
+          <button onClick={logout} className="flex items-center gap-2 p-2 rounded-lg bg-dark-800/50 text-dark-300 hover:text-white hover:bg-dark-700 transition-colors">
             <LogOut size={20} />
+            <span className="text-sm">Sign Out</span>
           </button>
         </div>
       </header>
@@ -100,7 +120,7 @@ export default function ViewerDashboard() {
         <div className="max-w-6xl mx-auto">
           
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Your Health Dashboard</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">MediTrack Patient Dashboard</h1>
             <p className="text-dark-300">View your clinical records, vitals, and billing information.</p>
           </motion.div>
 
@@ -108,7 +128,7 @@ export default function ViewerDashboard() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-6">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-400"><User size={20} /></div>
-                <span className="bg-success-500/10 text-success-400 px-3 py-1 rounded-full text-xs font-semibold">{patientData?.condition || 'Stable'}</span>
+                <span className="bg-success-500/10 text-success-400 px-3 py-1 rounded-full text-xs font-semibold">{getDisplayCondition(patientData?.condition || 'Stable')}</span>
               </div>
               <div className="text-dark-400 text-sm">Bed Assignment</div>
               <div className="text-2xl font-bold text-white">{patientData?.bedNumber || patientData?.bedNo || 'N/A'}</div>
@@ -119,8 +139,8 @@ export default function ViewerDashboard() {
                 <div className="w-10 h-10 rounded-xl bg-secondary-500/10 flex items-center justify-center text-secondary-400"><HeartPulse size={20} /></div>
               </div>
               <div className="text-dark-400 text-sm">Care Team</div>
-              <div className="text-xl font-bold text-white">{patientData?.treatingDoctor || patientData?.doctor || 'Unassigned'}</div>
-              <div className="text-dark-500 text-xs mt-1">{patientData?.department || patientData?.dept || 'General'}</div>
+              <div className="text-xl font-bold text-white">{patientData?.treatingDoctor || patientData?.doctor || 'Care team pending'}</div>
+              <div className="text-dark-500 text-xs mt-1">{getDisplayDepartment(patientData)}</div>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass-card p-6">

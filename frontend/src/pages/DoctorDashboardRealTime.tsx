@@ -37,6 +37,19 @@ function extractCollection<T>(value: unknown): T[] {
   return []
 }
 
+function formatClinicianName(value: unknown): string {
+  if (!value) return 'Nurse'
+  if (typeof value === 'string') return value.trim() || 'Nurse'
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>
+    const parts = [obj.name, obj.firstName, obj.lastName, obj.fullName, obj.userName, obj.displayName]
+      .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+    if (parts.length > 0) return parts.join(' ').trim()
+    if (typeof obj.id === 'string' || typeof obj.id === 'number') return String(obj.id)
+  }
+  return String(value)
+}
+
 function buildRecentVitalReports(vitals: any[]): RecentVitalReport[] {
   if (!vitals || vitals.length === 0) return []
 
@@ -72,7 +85,7 @@ function buildRecentVitalReports(vitals: any[]): RecentVitalReport[] {
     }
 
     if (!existing.recordedBy && (vital.recordedBy || vital.nurseId || vital.source)) {
-      existing.recordedBy = String(vital.recordedBy || vital.nurseId || vital.source)
+      existing.recordedBy = formatClinicianName(vital.recordedBy || vital.nurseId || vital.source)
     }
 
     if (!existing.department && (vital.department || vital.location)) {
@@ -128,7 +141,53 @@ function normalizeVitalEvent(eventData: any) {
   if (!normalized.timestamp && normalized.readingTimestamp) {
     normalized.timestamp = normalized.readingTimestamp
   }
+  // Ensure both patientId and patientIdentifier are available for flexible matching
+  if (!normalized.patientId && normalized.patientIdentifier) normalized.patientId = String(normalized.patientIdentifier)
+  if (!normalized.patientIdentifier && normalized.patientId) normalized.patientIdentifier = String(normalized.patientId)
+
+  // Normalize timestamp fields to ISO strings for consistent deduping and sorting
+  try {
+    const rawTs = normalized.readingTimestamp || normalized.timestamp || Date.now()
+    const iso = (typeof rawTs === 'number') ? new Date(rawTs).toISOString() : new Date(String(rawTs)).toISOString()
+    normalized.readingTimestamp = iso
+    normalized.timestamp = iso
+  } catch (e) {
+    // fall back silently
+  }
+
+  // Provide a stable eventId if not present
+  if (!normalized.eventId) {
+    const tsSnippet = String(normalized.readingTimestamp || normalized.timestamp || Date.now())
+    const val = normalized.value ?? normalized.heartRate ?? normalized.systolic ?? normalized.diastolic ?? ''
+    normalized.eventId = normalized.id || `${String(normalized.patientId ?? '')}-${String(normalized.vitalType ?? 'MULTI')}-${tsSnippet}-${String(val)}`
+  }
   return normalized
+}
+
+function normalizePatientKey(value: unknown) {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+}
+
+function patientIdsMatch(a: unknown, b: unknown) {
+  const left = normalizePatientKey(a)
+  const right = normalizePatientKey(b)
+  if (!left || !right) return false
+  if (left === right) return true
+  const leftDigits = left.replace(/\D/g, '')
+  const rightDigits = right.replace(/\D/g, '')
+  return leftDigits !== '' && rightDigits !== '' && leftDigits === rightDigits
+}
+
+function isSamePatient(event: any, patient: any) {
+  if (!event || !patient) return false
+  const eventId = event.patientId ?? event.patientIdentifier
+  const patientId = patient.id ?? patient.patientIdentifier
+  if (patientIdsMatch(eventId, patientId)) return true
+  if (event.patientIdentifier && patient.id && patientIdsMatch(event.patientIdentifier, patient.id)) return true
+  if (event.patientId && patient.patientIdentifier && patientIdsMatch(event.patientId, patient.patientIdentifier)) return true
+  return false
 }
 
 function getConditionColor(c: string) {
@@ -209,8 +268,45 @@ const LAB_ANALYTICS: Record<string, { test: string; normal: number; abnormal: nu
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function DoctorDashboardRealTime() {
   const { user, logout } = useAuth()
+  useEffect(() => {
+    try { (window as any).__doctor_rt_mounted = true } catch {}
+    return () => { try { (window as any).__doctor_rt_mounted = false } catch {} }
+  }, [])
+
   const [assignedPatients, setAssignedPatients] = useState<any[]>([])
   const [selectedPatient, setSelectedPatient] = useState<any>(null)
+  const selectedPatientRef = useRef<any>(null)
+  useEffect(() => {
+    selectedPatientRef.current = selectedPatient
+  }, [selectedPatient])
+
+  useEffect(() => {
+    try {
+      (window as any).__doctor_rt_forceInsertVital = (eventData: any) => {
+        const normalizedEvent = normalizeVitalEvent(eventData)
+        const activePatient = selectedPatientRef.current
+        if (!normalizedEvent || !activePatient) return
+        const eventPatientId = String(normalizedEvent.patientId ?? normalizedEvent.patientIdentifier ?? '')
+        const selId = String(activePatient?.id ?? '')
+        const selIdentifier = String(activePatient?.patientIdentifier ?? '')
+        if (selId && eventPatientId && eventPatientId !== selId && eventPatientId !== selIdentifier) return
+        const timestampValue = normalizedEvent.timestamp || normalizedEvent.readingTimestamp || ''
+        const eventId = normalizedEvent.eventId || `${eventPatientId}-${normalizedEvent.vitalType}-${timestampValue}-${normalizedEvent.value ?? normalizedEvent.systolic ?? normalizedEvent.diastolic}`
+        setPatientVitals(prev => {
+          const alreadyExists = prev.some(item => String(item?.eventId ?? item?.id ?? '') === String(eventId))
+          if (alreadyExists) return prev
+          return [normalizedEvent, ...prev.slice(0, 49)]
+        })
+        try { (window as any).__last_debug_vital = normalizedEvent } catch {}
+      }
+    } catch (err) {
+      console.error('[DEBUG] init global bridge failed', err)
+    }
+
+    return () => {
+      try { delete (window as any).__doctor_rt_forceInsertVital } catch {}
+    }
+  }, [])
   const [patientVitals, setPatientVitals] = useState<any[]>([])
   const [patientAlerts, setPatientAlerts] = useState<any[]>([])
   const [patientPredictions, setPatientPredictions] = useState<any[]>([])
@@ -221,6 +317,31 @@ export default function DoctorDashboardRealTime() {
   const [activeTab, setActiveTab] = useState<TabKey>('patients')
   const [wsConnected, setWsConnected] = useState(false)
   const [isDownloadingReport, setIsDownloadingReport] = useState(false)
+
+  const insertDebugVital = (eventData: any) => {
+    try {
+      const normalizedEvent = normalizeVitalEvent(eventData)
+      const activePatient = selectedPatientRef.current
+      if (!normalizedEvent || !activePatient) return
+
+      const eventPatientId = String(normalizedEvent.patientId ?? normalizedEvent.patientIdentifier ?? '')
+      const selId = String(activePatient?.id ?? '')
+      const selIdentifier = String(activePatient?.patientIdentifier ?? '')
+      const shouldInsert = !eventPatientId || !selId || eventPatientId === selId || eventPatientId === selIdentifier
+      if (!shouldInsert) return
+
+      const timestampValue = normalizedEvent.timestamp || normalizedEvent.readingTimestamp || ''
+      const eventId = normalizedEvent.eventId || `${eventPatientId}-${normalizedEvent.vitalType}-${timestampValue}-${normalizedEvent.value ?? normalizedEvent.systolic ?? normalizedEvent.diastolic}`
+      setPatientVitals(prev => {
+        const alreadyExists = prev.some(item => String(item?.eventId ?? item?.id ?? '') === String(eventId))
+        if (alreadyExists) return prev
+        return [normalizedEvent, ...prev.slice(0, 49)]
+      })
+      try { (window as any).__last_debug_vital = normalizedEvent } catch {}
+    } catch (err) {
+      console.error('[DEBUG] insertDebugVital error', err)
+    }
+  }
 
   // Notifications state (persisted by admin)
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
@@ -267,11 +388,20 @@ export default function DoctorDashboardRealTime() {
     const dept = selectedPatient.department || user?.department || 'General'
 
     const handleVitalEvent = (d: any) => {
-      if (String(d.patientId) !== String(selectedPatient.id)) return
-      const eventId = d.eventId || `${d.patientId}-${d.vitalType}-${d.timestamp}-${d.value || d.systolic || d.diastolic}`
-      if (seenVitalEventIds.current.has(eventId)) return
-      seenVitalEventIds.current.add(eventId)
-      setPatientVitals(prev => [d, ...prev.slice(0, 49)])
+      try {
+        const ne = normalizeVitalEvent(d)
+        const eventPatientId = String(ne.patientId ?? ne.patientIdentifier ?? '')
+        const selId = String(selectedPatient?.id ?? '')
+        const selIdentifier = String(selectedPatient?.patientIdentifier ?? '')
+        if (selId && eventPatientId && eventPatientId !== selId && eventPatientId !== selIdentifier) return
+
+        const eventId = ne.eventId || `${eventPatientId}-${ne.vitalType}-${ne.timestamp}-${ne.value ?? ne.systolic ?? ne.diastolic}`
+        if (seenVitalEventIds.current.has(eventId)) return
+        seenVitalEventIds.current.add(eventId)
+        setPatientVitals(prev => [ne, ...prev.slice(0, 49)])
+      } catch (err) {
+        console.error('[DEBUG] handleVitalEvent ws error', err, d)
+      }
     }
 
     wsService.subscribeToDoctorVitals(dept, handleVitalEvent)
@@ -298,37 +428,77 @@ export default function DoctorDashboardRealTime() {
     if (!selectedPatient) return
 
     const handleLocalVitalEvent = (eventData: any) => {
-      const normalizedEvent = normalizeVitalEvent(eventData)
-      if (!normalizedEvent || String(normalizedEvent.patientId) !== String(selectedPatient.id)) return
-      const timestampValue = normalizedEvent.timestamp || normalizedEvent.readingTimestamp || ''
-      const eventId = normalizedEvent.eventId || `${normalizedEvent.patientId}-${normalizedEvent.vitalType}-${timestampValue}-${normalizedEvent.value || normalizedEvent.systolic || normalizedEvent.diastolic}`
-      if (seenVitalEventIds.current.has(eventId)) return
-      seenVitalEventIds.current.add(eventId)
-      setPatientVitals(prev => [normalizedEvent, ...prev.slice(0, 49)])
+      try {
+        console.debug('[DEBUG] handleLocalVitalEvent received', eventData)
+        const normalizedEvent = normalizeVitalEvent(eventData)
+        console.debug('[DEBUG] normalizedEvent', normalizedEvent, 'selectedPatient', selectedPatient)
+        if (!normalizedEvent) return
+
+        const selId = String(selectedPatient?.id ?? '')
+        const selIdentifier = String(selectedPatient?.patientIdentifier ?? '')
+
+        // Robust patient matching: accept event.patientId or event.patientIdentifier
+        if (!isSamePatient(normalizedEvent, selectedPatient)) {
+          const eventPatientId = String(normalizedEvent.patientId ?? normalizedEvent.patientIdentifier ?? '')
+          console.debug('[DEBUG] handleLocalVitalEvent patient mismatch - skipping event', { eventPatientId, selId, selIdentifier })
+          return
+        }
+
+        const timestampValue = normalizedEvent.timestamp || normalizedEvent.readingTimestamp || ''
+        const eventId = normalizedEvent.eventId || `${String(normalizedEvent.patientId ?? normalizedEvent.patientIdentifier ?? '')}-${normalizedEvent.vitalType}-${timestampValue}-${normalizedEvent.value ?? normalizedEvent.systolic ?? normalizedEvent.diastolic}`
+        if (seenVitalEventIds.current.has(eventId)) {
+          console.debug('[DEBUG] handleLocalVitalEvent ignored - duplicate eventId', eventId)
+          return
+        }
+        seenVitalEventIds.current.add(eventId)
+
+        // Append a small debug trace for cross-tab testing if present
+        try { (window as any).__test_logs = (window as any).__test_logs || []; (window as any).__test_logs.push({ type: 'handled-local', event: normalizedEvent, eventId, selectedPatient: { id: selId, patientIdentifier: selIdentifier }, ts: Date.now() }) } catch (e) {}
+
+        insertDebugVital(normalizedEvent)
+      } catch (err) {
+        console.error('[DEBUG] handleLocalVitalEvent error', err)
+      }
     }
 
     const handleStorageEvent = (e: StorageEvent) => {
-      if (e.key !== LOCAL_NURSE_VITAL_STORAGE_KEY || !e.newValue) return
       try {
+        try { (window as any).__test_logs = (window as any).__test_logs || []; (window as any).__test_logs.push({ type: 'component-storage-received', key: e.key, newValue: e.newValue, ts: Date.now() }) } catch (e) {}
+        console.debug('[DEBUG] storage event', e.key, e.newValue)
+        if (e.key !== LOCAL_NURSE_VITAL_STORAGE_KEY || !e.newValue) return
         const parsed = JSON.parse(e.newValue)
         const events = Array.isArray(parsed) ? parsed : [parsed]
-        events.forEach(handleLocalVitalEvent)
-      } catch {
-        // ignore malformed local event payloads
+        events.forEach(evt => {
+          console.debug('[DEBUG] storage->dispatching local event', evt)
+          handleLocalVitalEvent(evt)
+        })
+      } catch (err) {
+        console.error('[DEBUG] handleStorageEvent error', err)
       }
     }
 
     const handleCustomEvent = (e: Event) => {
-      const customEvent = e as CustomEvent
-      if (!customEvent.detail) return
-      const events = Array.isArray(customEvent.detail) ? customEvent.detail : [customEvent.detail]
-      events.forEach(handleLocalVitalEvent)
+      try {
+        const customEvent = e as CustomEvent
+        try { (window as any).__test_logs = (window as any).__test_logs || []; (window as any).__test_logs.push({ type: 'component-custom-received', detail: customEvent && (customEvent as any).detail ? (customEvent as any).detail : customEvent, ts: Date.now() }) } catch (e) {}
+        console.debug('[DEBUG] custom event received', customEvent && customEvent.detail)
+        if (!customEvent.detail) return
+        const events = Array.isArray(customEvent.detail) ? customEvent.detail : [customEvent.detail]
+        events.forEach(evt => {
+          console.debug('[DEBUG] custom->dispatching local event', evt)
+          handleLocalVitalEvent(evt)
+        })
+      } catch (err) {
+        console.error('[DEBUG] handleCustomEvent error', err)
+      }
     }
 
+    try { (window as any).__forceInsertLocalVital = insertDebugVital } catch {}
     window.addEventListener('storage', handleStorageEvent)
     window.addEventListener(LOCAL_NURSE_VITAL_EVENT, handleCustomEvent)
 
     return () => {
+      try { delete (window as any).__forceInsertLocalVital } catch {}
       window.removeEventListener('storage', handleStorageEvent)
       window.removeEventListener(LOCAL_NURSE_VITAL_EVENT, handleCustomEvent)
     }
@@ -505,6 +675,20 @@ export default function DoctorDashboardRealTime() {
     return full || p?.fullName || p?.name || p?.patientIdentifier || 'Unknown'
   }
 
+  function getUserDisplayName(value: any) {
+    const parts = [
+      value?.name,
+      value?.fullName,
+      value?.firstName && value?.lastName ? `${value.firstName} ${value.lastName}` : value?.firstName,
+      value?.lastName,
+    ].filter(Boolean)
+    return String(parts.join(' ').trim() || value?.email || 'Doctor')
+  }
+
+  function getUserDepartment(value: any) {
+    return String(value?.department || value?.departmentName || 'General').trim() || 'General'
+  }
+
   if (!user) return <div className="min-h-screen flex items-center justify-center"><div className="text-white">Loading...</div></div>
 
 
@@ -525,13 +709,13 @@ export default function DoctorDashboardRealTime() {
                   <HeartPulse size={26} />
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.35em] text-primary-300">Clinical command center</p>
-                  <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Doctor Dashboard</h1>
+                  <p className="text-xs uppercase tracking-[0.35em] text-primary-300">Doctor command center</p>
+                  <h1 className="text-3xl font-black tracking-tight sm:text-4xl">MediTrack Doctor Dashboard</h1>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <span className="rounded-full border border-white/10 bg-dark-900/70 px-3 py-1 text-sm text-dark-200">{user?.name || 'Doctor'}</span>
-                <span className="rounded-full border border-primary-500/20 bg-primary-500/10 px-3 py-1 text-sm text-primary-200">{user?.department || 'General'}</span>
+                <span className="rounded-full border border-white/10 bg-dark-900/70 px-3 py-1 text-sm text-dark-200">{getUserDisplayName(user)}</span>
+                <span className="rounded-full border border-primary-500/20 bg-primary-500/10 px-3 py-1 text-sm text-primary-200">{getUserDepartment(user)}</span>
                 <span className={`rounded-full border px-3 py-1 text-sm font-medium ${wsConnected ? 'border-success-500/30 bg-success-500/10 text-success-300' : 'border-error-500/30 bg-error-500/10 text-error-300'}`}>
                   {wsConnected ? 'Live connection' : 'Offline monitoring'}
                 </span>
@@ -587,7 +771,7 @@ export default function DoctorDashboardRealTime() {
               </div>
 
               <button onClick={logout} className="rounded-xl bg-error-500 px-5 py-3 font-semibold text-white transition-colors hover:bg-error-600">
-                Logout
+                Sign Out
               </button>
             </div>
           </div>
@@ -862,7 +1046,7 @@ export default function DoctorDashboardRealTime() {
                             <td className="px-4 py-3 text-primary-400">{report.systolic != null && report.diastolic != null ? `${report.systolic}/${report.diastolic}` : '—'}</td>
                             <td className="px-4 py-3 text-warning-400">{report.temperature != null ? `${report.temperature}°F` : '—'}</td>
                             <td className="px-4 py-3 text-success-400">{report.spo2 != null ? `${report.spo2}%` : '—'}</td>
-                            <td className="px-4 py-3 text-xs text-dark-300">{report.recordedBy || report.department || 'Nurse'}</td>
+                            <td className="px-4 py-3 text-xs text-dark-300">{formatClinicianName(report.recordedBy || report.department || 'Nurse')}</td>
                           </tr>
                         ))}
                       </tbody>

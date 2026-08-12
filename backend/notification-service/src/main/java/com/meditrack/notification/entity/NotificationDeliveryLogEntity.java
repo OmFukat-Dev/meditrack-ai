@@ -28,7 +28,7 @@ public class NotificationDeliveryLogEntity {
     private Integer deliveryAttempt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "channel_type", nullable = false, length = 20)
+    @Column(name = "channel_type", nullable = false, columnDefinition = "VARCHAR(20)")
     private NotificationChannel channelType;
 
     @Column(nullable = false, length = 50)
